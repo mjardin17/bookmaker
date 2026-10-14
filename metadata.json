@@ -1,0 +1,6 @@
+{
+  "name": "Empire OS",
+  "description": "Empire OS: Enterprise Operating System with StoryForge Publishing Engine, Shared Semantic Memory Engine, Council Chamber, and Production Automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
