@@ -122,6 +122,26 @@ export const EmpireOSSystemStatusModal: React.FC<EmpireOSSystemStatusModalProps>
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="text-emerald-400 mt-0.5">•</span>
+                <span>AI Subscription Connectors (Claude Pro MCP & ChatGPT Plus Actions - Zero API Key)</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>Project Milestone Timeline & Deadline Gantt Roadmap</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>StoryForge 2 15-Stage State Machine & SQLite Pipeline Ledger</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>Patterson Formula Bestseller Machine & 5-Type Cliffhangers</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
+                <span>Real KDP Mathematical Cover Spec Engine (9 Variants)</span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-400 mt-0.5">•</span>
                 <span>Publishing Export Package Hub (.ZIP file builder)</span>
               </li>
             </ul>

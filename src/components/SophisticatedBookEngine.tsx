@@ -53,6 +53,9 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
   const [activeChapterId, setActiveChapterId] = useState<string>(chapters[0]?.id || '');
   const activeChapter = chapters.find((c) => c.id === activeChapterId) || chapters[0];
 
+  // Active AI Engine Connector (Claude Pro / ChatGPT Plus / Gemini Flash)
+  const [selectedAiEngine, setSelectedAiEngine] = useState<'gemini' | 'claude' | 'chatgpt'>('claude');
+
   // Outliner state
   const [formulaOutline, setFormulaOutline] = useState<FormulaOutlineBeat[]>(
     project.formulaOutline || []
@@ -80,6 +83,11 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
   // Formula catalog filter
   const [formulaCategoryFilter, setFormulaCategoryFilter] = useState<'all' | 'suspense' | 'mystery' | 'epic' | 'literary'>('all');
   const [formulaSearchQuery, setFormulaSearchQuery] = useState<string>('');
+
+  // StoryForge 2 mechanical formula rules (storyforge/patterson_formula.py)
+  const [readingLevel, setReadingLevel] = useState<'MG' | 'YA' | 'ADULT'>('YA');
+  const [selectedCliffhangerType, setSelectedCliffhangerType] = useState<'revelation' | 'reversal' | 'escalation' | 'question' | 'threat' | 'auto'>('auto');
+  const [mechanicalValidation, setMechanicalValidation] = useState<any | null>(null);
 
   // Save config helper
   const updateEngineConfig = (newSettings: Partial<AuthorVoiceConfig>) => {
@@ -137,7 +145,8 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
           worldContext: project.worldBible?.universeName ? `${project.worldBible.universeName}: ${project.worldBible.settingOverview}` : '',
           characterContext: project.characters?.map(c => `${c.name} (${c.role}): ${c.goals}`).join('; '),
           customAuthorName: selectedFormulaId === 'custom-clone' ? customAuthorName : undefined,
-          customVoiceDirectives: clonedFingerprint ? clonedFingerprint.imitationDirectives?.join('. ') : undefined
+          customVoiceDirectives: clonedFingerprint ? clonedFingerprint.imitationDirectives?.join('. ') : undefined,
+          preferredProvider: selectedAiEngine === 'claude' ? 'claude_subscription' : selectedAiEngine === 'chatgpt' ? 'chatgpt_subscription' : 'gemini'
         })
       });
       const data = await res.json();
@@ -194,28 +203,45 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
     }
   };
 
-  // 4. Audit Patterson Compliance
+  // 4. Audit Patterson Compliance (AI Review + StoryForge 2 Mechanical Validator)
   const handleAuditPatterson = async (textToAudit?: string) => {
     const text = textToAudit || activeChapter?.content;
     if (!text) return;
     setIsAuditing(true);
     try {
-      const res = await fetch('/api/book/audit-patterson', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          chapterTitle: activeChapter?.title
+      const [aiRes, mechRes] = await Promise.all([
+        fetch('/api/book/audit-patterson', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            chapterTitle: activeChapter?.title
+          })
+        }),
+        fetch('/api/storyforge2/patterson-validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            readingLevel
+          })
         })
-      });
-      const data = await res.json();
-      if (data.success && data.report) {
-        setComplianceReport(data.report);
+      ]);
+
+      const aiData = await aiRes.json();
+      const mechData = await mechRes.json();
+
+      if (aiData.success && aiData.report) {
+        setComplianceReport(aiData.report);
         if (activeChapter) {
           onUpdateChapter(activeChapter.id, {
-            pattersonCompliance: data.report
+            pattersonCompliance: aiData.report
           });
         }
+      }
+
+      if (mechData.success && mechData.validation) {
+        setMechanicalValidation(mechData.validation);
       }
     } catch (e) {
       console.error('Failed to audit Patterson compliance:', e);
@@ -339,6 +365,49 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
             <p className="text-xs md:text-sm text-slate-300 max-w-3xl leading-relaxed">
               Engineered after James Patterson&apos;s formula (60-80 page outlines, micro-chapters, Zeigarnik cliffhangers, dual asymmetric POVs, zero fluff) combined with multi-author stylistic mimicry (Dan Brown, Stephen King, Brandon Sanderson, Agatha Christie, Colleen Hoover, Michael Crichton, or clone any custom author from sample prose).
             </p>
+
+            {/* AI Subscription Engine Selector */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              <span className="text-[11px] font-mono text-slate-400">AI Subscription Engine:</span>
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                <button
+                  onClick={() => setSelectedAiEngine('claude')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    selectedAiEngine === 'claude'
+                      ? 'bg-purple-600/30 text-purple-200 border border-purple-500 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Route generation through Anthropic Claude Pro Subscription (Zero API Key)"
+                >
+                  <div className="w-2 h-2 rounded-full bg-purple-400" />
+                  Claude Pro (MCP)
+                </button>
+                <button
+                  onClick={() => setSelectedAiEngine('chatgpt')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    selectedAiEngine === 'chatgpt'
+                      ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Route generation through OpenAI ChatGPT Plus Custom GPT Action (Zero API Key)"
+                >
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  ChatGPT Plus (Action)
+                </button>
+                <button
+                  onClick={() => setSelectedAiEngine('gemini')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    selectedAiEngine === 'gemini'
+                      ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Route generation through built-in Google Gemini 3.8 Flash"
+                >
+                  <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                  Gemini Flash
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Quick Enforce Switch & Stats */}
@@ -615,46 +684,101 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
             </div>
           </div>
 
-          {/* Chapter Metadata: POV & Ticking Clock (Patterson Rules 4 & 5) */}
+          {/* Chapter Metadata: POV & Ticking Clock (Patterson Rules 4 & 5) + StoryForge 2 Mechanical Controls */}
           {activeChapter && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
-                  Chapter POV Character (Rule 4: Alternate POVs)
-                </label>
-                <input
-                  type="text"
-                  value={activeChapter.povCharacter || 'Protagonist: Leo'}
-                  onChange={(e) => onUpdateChapter(activeChapter.id, { povCharacter: e.target.value })}
-                  placeholder="e.g. Detective Alex Cross / Antagonist: The Shadow"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-500/50"
-                />
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
+                    Chapter POV Character (Rule 4: Alternate POVs)
+                  </label>
+                  <input
+                    type="text"
+                    value={activeChapter.povCharacter || 'Protagonist: Leo'}
+                    onChange={(e) => onUpdateChapter(activeChapter.id, { povCharacter: e.target.value })}
+                    placeholder="e.g. Detective Alex Cross / Antagonist: The Shadow"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
+                    Ticking Clock Urgency (Rule 5)
+                  </label>
+                  <input
+                    type="text"
+                    value={activeChapter.tickingClockNote || 'T-minus 36 hours before launch'}
+                    onChange={(e) => onUpdateChapter(activeChapter.id, { tickingClockNote: e.target.value })}
+                    placeholder="e.g. 18 minutes remaining on the bomb timer"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-rose-300 font-mono focus:outline-none focus:border-rose-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
+                    Closing Cliffhanger Target (Rule 3)
+                  </label>
+                  <input
+                    type="text"
+                    value={activeChapter.cliffhangerHook || ''}
+                    onChange={(e) => onUpdateChapter(activeChapter.id, { cliffhangerHook: e.target.value })}
+                    placeholder="Unresolved twist / impending danger that forces page turn..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500/50"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
-                  Ticking Clock Urgency (Rule 5)
-                </label>
-                <input
-                  type="text"
-                  value={activeChapter.tickingClockNote || 'T-minus 36 hours before launch'}
-                  onChange={(e) => onUpdateChapter(activeChapter.id, { tickingClockNote: e.target.value })}
-                  placeholder="e.g. 18 minutes remaining on the bomb timer"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-rose-300 font-mono focus:outline-none focus:border-rose-500/50"
-                />
-              </div>
+              {/* StoryForge 2 Formula Controls: Reading Level & 5 Cliffhanger Types */}
+              <div className="pt-2 border-t border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+                
+                {/* Reading Level Targets */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase">Target Audience / Word Target:</span>
+                  {[
+                    { id: 'MG', label: 'Middle Grade (500w ±10%)' },
+                    { id: 'YA', label: 'Young Adult (600w ±10%)' },
+                    { id: 'ADULT', label: 'Adult Thriller (700w ±10%)' }
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => setReadingLevel(lvl.id as any)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all ${
+                        readingLevel === lvl.id
+                          ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                    >
+                      {lvl.label}
+                    </button>
+                  ))}
+                </div>
 
-              <div>
-                <label className="block text-[10px] text-slate-400 font-mono uppercase mb-1">
-                  Closing Cliffhanger Beat (Rule 3)
-                </label>
-                <input
-                  type="text"
-                  value={activeChapter.cliffhangerHook || ''}
-                  onChange={(e) => onUpdateChapter(activeChapter.id, { cliffhangerHook: e.target.value })}
-                  placeholder="Unresolved twist / impending danger that forces page turn..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500/50"
-                />
+                {/* 5 Cliffhanger Types from storyforge/patterson_formula.py */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase">Patterson Cliffhanger Type:</span>
+                  {[
+                    { id: 'auto', label: 'Auto' },
+                    { id: 'revelation', label: 'Revelation' },
+                    { id: 'reversal', label: 'Reversal' },
+                    { id: 'escalation', label: 'Escalation' },
+                    { id: 'question', label: 'Question' },
+                    { id: 'threat', label: 'Threat' }
+                  ].map((cType) => (
+                    <button
+                      key={cType.id}
+                      onClick={() => setSelectedCliffhangerType(cType.id as any)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all ${
+                        selectedCliffhangerType === cType.id
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold'
+                          : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      }`}
+                      title={cType.id}
+                    >
+                      {cType.label}
+                    </button>
+                  ))}
+                </div>
+
               </div>
             </div>
           )}
@@ -878,6 +1002,86 @@ export const SophisticatedBookEngine: React.FC<SophisticatedBookEngineProps> = (
                   </div>
                 )}
               </div>
+
+              {/* StoryForge 2 Mechanical Zero-Fluff Formula Gate (storyforge/patterson_formula.py) */}
+              {mechanicalValidation && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-100">StoryForge 2 Mechanical QA Gate</h4>
+                        <span className="text-[10px] font-mono text-slate-400">storyforge/patterson_formula.py</span>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                      mechanicalValidation.grade === 'A+' || mechanicalValidation.grade === 'A'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      Grade: {mechanicalValidation.grade} ({mechanicalValidation.complianceScore}%)
+                    </span>
+                  </div>
+
+                  {/* Quantitative Checklist Grid */}
+                  <div className="space-y-1.5 text-xs font-mono">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-400">Word Count Target ({mechanicalValidation.readingLevel})</span>
+                      <span className={mechanicalValidation.wordCountPass ? 'text-emerald-400' : 'text-rose-400'}>
+                        {mechanicalValidation.wordCount}w {mechanicalValidation.wordCountPass ? '✓' : `✕ (Target: ${mechanicalValidation.targetWords}w)`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-400">Dialogue Ratio</span>
+                      <span className={mechanicalValidation.dialoguePass ? 'text-emerald-400' : 'text-rose-400'}>
+                        {mechanicalValidation.dialogueRatio}% {mechanicalValidation.dialoguePass ? '✓' : '✕ (Target: 40-50%)'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-400">Avg Sentence Length</span>
+                      <span className={mechanicalValidation.sentenceLengthPass ? 'text-emerald-400' : 'text-rose-400'}>
+                        {mechanicalValidation.sentenceLengthAvg}w {mechanicalValidation.sentenceLengthPass ? '✓' : '✕ (Target: 8-12w)'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-400">Passive Voice Limit</span>
+                      <span className={mechanicalValidation.passiveVoicePass ? 'text-emerald-400' : 'text-rose-400'}>
+                        {mechanicalValidation.passiveVoicePercent}% {mechanicalValidation.passiveVoicePass ? '✓' : '✕ (<5%)'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-400">Cliffhanger Type</span>
+                      <span className="text-rose-400 uppercase font-bold">
+                        {mechanicalValidation.cliffhangerType}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Violations notice or Pass */}
+                  {mechanicalValidation.violations?.length > 0 ? (
+                    <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl space-y-1">
+                      <span className="text-[10px] font-mono text-rose-300 font-bold uppercase block">
+                        Mechanical Formula Violations ({mechanicalValidation.violations.length}):
+                      </span>
+                      {mechanicalValidation.violations.map((v: string, i: number) => (
+                        <div key={i} className="text-[11px] text-rose-200/90 flex items-start gap-1">
+                          <span className="text-rose-400">•</span>
+                          <span>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-[11px] text-emerald-300 font-mono flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Zero Violations: Manuscript strictly conforms to Patterson formula.</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Patterson Rule Quick Reference Box */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 text-xs text-slate-300">

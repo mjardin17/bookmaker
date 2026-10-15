@@ -14,6 +14,7 @@ import { MerchStudio } from './components/MerchStudio';
 import { ScienceLabAnalytics } from './components/ScienceLabAnalytics';
 import { ExportPackageHub } from './components/ExportPackageHub';
 import { SophisticatedBookEngine } from './components/SophisticatedBookEngine';
+import { SubscriptionConnectorsHub } from './components/SubscriptionConnectorsHub';
 import { NewProjectModal } from './components/NewProjectModal';
 import { EmpireOSSystemStatusModal } from './components/EmpireOSSystemStatusModal';
 import { Plus, RefreshCw, BookOpen } from 'lucide-react';
@@ -367,6 +368,19 @@ export default function App() {
               project={activeProject}
               onAdvanceStep={handleAdvanceStep}
               onRunStageAudit={(stageName) => handleRunDebate(`Stage Audit: ${stageName}`)}
+            />
+          )}
+
+          {activeTab === 'connectors' && (
+            <SubscriptionConnectorsHub
+              project={activeProject}
+              onApplyGeneratedContent={(chapterNum, text) => {
+                const target = activeProject.manuscript?.chapters?.[chapterNum - 1] || activeProject.manuscript?.chapters?.[0];
+                if (target) {
+                  handleUpdateChapter(target.id, { content: text });
+                  setActiveTab('manuscript');
+                }
+              }}
             />
           )}
 

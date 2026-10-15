@@ -430,5 +430,135 @@ export interface PublishingProject {
   cartoonEpisodes?: CartoonEpisode[];
   authorMachineConfig?: AuthorVoiceConfig;
   formulaOutline?: FormulaOutlineBeat[];
+  storyforge2Ledger?: StoryForge2StageStatus[];
+  coverSpec?: CoverSpecResult;
 }
+
+export type StoryForge2StageId =
+  | 'BRIEF_INGEST'
+  | 'MANUSCRIPT_GENERATE'
+  | 'MANUSCRIPT_VALIDATE'
+  | 'LAYOUT_PLAN'
+  | 'ILLUSTRATIONS_GENERATE'
+  | 'COVER_CALCULATE'
+  | 'COVER_RENDER'
+  | 'EPUB_COMPILE'
+  | 'EPUB_VALIDATE'
+  | 'PDF_COMPILE'
+  | 'PDF_VALIDATE'
+  | 'MARKETING_PACKAGE'
+  | 'VIDEO_COMMERCIAL_GENERATE'
+  | 'HUMAN_APPROVAL_GATE'
+  | 'DISTRIBUTION_DISPATCH';
+
+export interface StoryForge2StageStatus {
+  stage: StoryForge2StageId;
+  name: string;
+  category: 'Foundation' | 'Manuscript' | 'Visual & Layout' | 'Cover Package' | 'Export & QA' | 'Marketing & Video' | 'Distribution';
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'RETRYING' | 'SKIPPED';
+  durationMs?: number;
+  outputSummary?: string;
+  violations?: string[];
+  lastRunAt?: string;
+}
+
+export interface CoverSpecResult {
+  trimWidthIn: number;
+  trimHeightIn: number;
+  pageCount: number;
+  paperType: 'white' | 'cream';
+  spineWidthIn: number;
+  bleedIn: number;
+  includeSpineText: boolean;
+  frontCoverWidthIn: number;
+  frontCoverHeightIn: number;
+  fullWrapWidthIn: number;
+  fullWrapHeightIn: number;
+  variants: {
+    id: string;
+    name: string;
+    dimensions: string;
+    format: string;
+    purpose: string;
+  }[];
+}
+
+export interface PlatformCapabilityInfo {
+  platformId: string;
+  name: string;
+  type: 'direct_api' | 'approved_partner' | 'draft_export';
+  authMethod: string;
+  notes: string;
+  supportedFormats: string[];
+  status: 'ready' | 'connected' | 'export_only' | 'sandbox';
+}
+
+export interface PattersonMechanicalValidation {
+  readingLevel: 'MG' | 'YA' | 'ADULT';
+  targetWords: number;
+  wordCount: number;
+  wordCountPass: boolean;
+  dialogueRatio: number;
+  dialoguePass: boolean;
+  sentenceLengthAvg: number;
+  sentenceLengthPass: boolean;
+  passiveVoicePercent: number;
+  passiveVoicePass: boolean;
+  cliffhangerType: 'revelation' | 'reversal' | 'escalation' | 'question' | 'threat' | 'none';
+  cliffhangerDetected: string;
+  violations: string[];
+  grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+  complianceScore: number;
+}
+
+export type AISubscriptionProvider = 'gemini' | 'claude_subscription' | 'chatgpt_subscription' | 'ollama_local';
+
+export interface AISubscriptionConfig {
+  activeProvider: AISubscriptionProvider;
+  claude: {
+    connected: boolean;
+    sessionKey?: string;
+    plan: 'Claude Pro' | 'Claude Team' | 'Claude Enterprise' | 'Free' | 'Disconnected';
+    preferredModel: 'claude-3-5-sonnet-latest' | 'claude-3-opus' | 'claude-3-5-haiku';
+    mcpActive: boolean;
+    mcpServerUrl: string;
+    lastPingMs?: number;
+    lastConnectedAt?: string;
+  };
+  chatgpt: {
+    connected: boolean;
+    sessionToken?: string;
+    plan: 'ChatGPT Plus' | 'ChatGPT Pro' | 'ChatGPT Team' | 'Free' | 'Disconnected';
+    preferredModel: 'gpt-4o' | 'o1' | 'o1-mini' | 'gpt-4o-mini';
+    customGptActionActive: boolean;
+    openApiSchemaUrl: string;
+    lastPingMs?: number;
+    lastConnectedAt?: string;
+  };
+  lastTestLog?: {
+    provider: AISubscriptionProvider;
+    success: boolean;
+    latencyMs: number;
+    message: string;
+    timestamp: string;
+  };
+}
+
+export interface ProjectMilestone {
+  id: string;
+  phaseNumber: number;
+  title: string;
+  subtitle: string;
+  category: 'Foundation' | 'Architecture' | 'Manuscript' | 'Visuals' | 'Production' | 'Distribution';
+  stages: number[];
+  sf2Stages: StoryForge2StageId[];
+  targetDaysFromStart: number;
+  targetDeadline: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'UPCOMING' | 'AT_RISK' | 'BLOCKED';
+  progressPercent: number;
+  criticalPath: boolean;
+  deliverables: { id: string; label: string; completed: boolean; requiredForNext: boolean }[];
+  dependsOnMilestoneId?: string;
+}
+
 

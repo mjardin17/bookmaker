@@ -107,6 +107,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden lg:inline">System Audit</span>
             </button>
 
+            {/* AI Subscription Connectors trigger (Zero API Key) */}
+            <button
+              onClick={() => onChangeTab('connectors')}
+              className={`text-xs font-medium px-2.5 py-2 rounded-lg border flex items-center gap-1.5 transition-all ${
+                activeTab === 'connectors'
+                  ? 'bg-purple-600/20 border-purple-500 text-purple-200 shadow-sm'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-purple-300 border-slate-800'
+              }`}
+              title="Connect Claude Pro & ChatGPT Plus Subscriptions without an API key"
+            >
+              <Cpu className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden xl:inline">Subscription Connectors</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+
             {/* Mode Switcher */}
             <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
               <button
@@ -169,7 +184,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Secondary Sub-Header Navigation Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto py-2 border-t border-slate-800/60 no-scrollbar text-xs">
           {[
-            { id: 'pipeline', label: '1. Pipeline Tracker', badge: `${activeProject?.currentStep || 1}/20` },
+            { id: 'pipeline', label: '1. Pipeline & Timeline', badge: `${activeProject?.currentStep || 1}/20` },
+            { id: 'connectors', label: '🔌 AI Connectors (No API)', badge: 'Claude/GPT', isNew: true },
             { id: 'council', label: '2. Grand Council', badge: '9 Experts' },
             { id: 'bookmachine', label: '🖋️ Patterson Book Machine', badge: 'Formula V1', isNew: true },
             { id: 'manuscript', label: '3. Book & Chapters', badge: `${activeProject?.manuscript?.chapters?.length || 0} Ch.` },
