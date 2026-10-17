@@ -397,7 +397,18 @@ export default function App() {
         /* Main Workspace Body */
         <main className={activeTab === '3d-scene' ? 'w-full p-0 m-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'}>
           {activeTab === '3d-scene' && (
-            <ThreeStudio />
+            <ThreeStudio
+              onAttachVideoToChapter={(chNum, videoUrl) => {
+                const target = activeProject.manuscript?.chapters?.find(c => c.chapterNumber === chNum) || activeProject.manuscript?.chapters?.[0];
+                if (target) {
+                  handleUpdateChapter(target.id, {
+                    attachedVideoUrl: videoUrl
+                  });
+                  setActiveTab('manuscript');
+                }
+              }}
+              onNavigateToVideoStudio={() => setActiveTab('veo-studio')}
+            />
           )}
 
           {activeTab === 'music-studio' && (
@@ -525,6 +536,8 @@ export default function App() {
             <IllustrationStudio
               project={activeProject}
               onGeneratePrompts={() => handleRunDebate('Generate Multi-Engine Illustration Packs')}
+              onNavigateToVeo={() => setActiveTab('veo-studio')}
+              onNavigateToLyria={() => setActiveTab('music-studio')}
             />
           )}
 

@@ -1,21 +1,26 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PublishingProject } from '../types/storyforge';
 import { 
   Palette, Image as ImageIcon, Camera, Sparkles, Copy, 
   Check, Layers, Eye, RefreshCw, Upload, Download, 
-  Search, Sliders, Wand2, ArrowRight, CheckCircle2, SplitSquareVertical
+  Search, Sliders, Wand2, ArrowRight, CheckCircle2, SplitSquareVertical,
+  Video, Music, Film
 } from 'lucide-react';
 
 interface IllustrationStudioProps {
   project: PublishingProject;
   onGeneratePrompts: () => void;
   onSaveToBookIllustrations?: (imageUrl: string, label: string) => void;
+  onNavigateToVeo?: () => void;
+  onNavigateToLyria?: () => void;
 }
 
 export const IllustrationStudio: React.FC<IllustrationStudioProps> = ({
   project,
   onGeneratePrompts,
-  onSaveToBookIllustrations
+  onSaveToBookIllustrations,
+  onNavigateToVeo,
+  onNavigateToLyria
 }) => {
   // Studio Mode: Create, Edit, or Multi-Engine Prompts
   const [activeTab, setActiveTab] = useState<'create' | 'edit' | 'prompts'>('create');
@@ -85,14 +90,30 @@ export const IllustrationStudio: React.FC<IllustrationStudioProps> = ({
     'Convert style into vintage golden-age storybook watercolor'
   ];
 
-  // Project illustrations available for editing
-  const PROJECT_IMAGES = [
+  // Project illustrations available for editing (dynamically enriched)
+  const [projectImages, setProjectImages] = useState([
     { name: 'Chapter 1 Scene', path: '/output_books/little_zeus_gets_his_thunderbolt/illustrations/ch001_illus00.png' },
     { name: 'Little Zeus Sheet', path: '/output_books/little_zeus_gets_his_thunderbolt/illustrations/little_zeus_sheet.png' },
     { name: 'Athena Sheet', path: '/output_books/little_zeus_gets_his_thunderbolt/illustrations/athena_sheet.png' },
     { name: 'Stormy the Cloud', path: '/output_books/little_zeus_gets_his_thunderbolt/illustrations/stormy_the_storm_cloud_sheet.png' },
     { name: 'Book Front Cover', path: '/output_books/little_zeus_gets_his_thunderbolt/covers/cover_front.png' }
-  ];
+  ]);
+
+  useEffect(() => {
+    fetch('/api/book-illustrations')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.illustrations && data.illustrations.length > 0) {
+          const map = new Map<string, { name: string; path: string }>();
+          data.illustrations.forEach((item: { name: string; path: string }) => map.set(item.path, item));
+          projectImages.forEach((item) => {
+            if (!map.has(item.path)) map.set(item.path, item);
+          });
+          setProjectImages(Array.from(map.values()));
+        }
+      })
+      .catch((e) => console.warn('Could not load dynamic illustrations in IllustrationStudio:', e));
+  }, []);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -289,8 +310,8 @@ export const IllustrationStudio: React.FC<IllustrationStudioProps> = ({
                 </div>
 
                 {/* Project samples */}
-                <div className="grid grid-cols-5 gap-2">
-                  {PROJECT_IMAGES.map((img, idx) => (
+                <div className="grid grid-cols-5 gap-2 max-h-44 overflow-y-auto pr-1">
+                  {projectImages.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedSourceImage(img.path)}
@@ -539,7 +560,27 @@ export const IllustrationStudio: React.FC<IllustrationStudioProps> = ({
                   <div className="text-xs text-slate-400 font-mono">
                     gemini-nano-banana-2.1
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {onNavigateToVeo && (
+                      <button
+                        onClick={onNavigateToVeo}
+                        className="px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        title="Animate this image into a video using Veo 3.1"
+                      >
+                        <Video className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Animate with Veo</span>
+                      </button>
+                    )}
+                    {onNavigateToLyria && (
+                      <button
+                        onClick={onNavigateToLyria}
+                        className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        title="Compose a soundtrack inspired by this image"
+                      >
+                        <Music className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Soundtrack</span>
+                      </button>
+                    )}
                     <a
                       href={generatedImage}
                       download="gemini_nano_banana_image.png"

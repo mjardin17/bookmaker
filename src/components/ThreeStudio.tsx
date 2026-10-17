@@ -19,7 +19,12 @@ import {
   Sun,
   Shield,
   Box,
-  Cpu
+  Cpu,
+  Video,
+  Download,
+  X,
+  Film,
+  Check
 } from 'lucide-react';
 
 // Scratch vector helpers pre-allocated outside render loop for zero-GC 60fps performance
@@ -34,9 +39,15 @@ export type CameraPreset = 'hero' | 'top' | 'low' | 'macro';
 
 interface ThreeStudioProps {
   initialModel?: ModelId;
+  onAttachVideoToChapter?: (chapterNumber: number, videoUrl: string) => void;
+  onNavigateToVideoStudio?: () => void;
 }
 
-export const ThreeStudio: React.FC<ThreeStudioProps> = ({ initialModel = 'thunderbolt' }) => {
+export const ThreeStudio: React.FC<ThreeStudioProps> = ({ 
+  initialModel = 'thunderbolt',
+  onAttachVideoToChapter,
+  onNavigateToVideoStudio
+}) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   // UI state
@@ -50,6 +61,14 @@ export const ThreeStudio: React.FC<ThreeStudioProps> = ({ initialModel = 'thunde
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [fps, setFps] = useState<number>(60);
+
+  // 3D Canvas Video Recorder State
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordSecondsLeft, setRecordSecondsLeft] = useState<number>(5);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
+  const [isAttachedToast, setIsAttachedToast] = useState<boolean>(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   // Mutable refs for Three.js state without React re-render tearing
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -885,6 +904,59 @@ export const ThreeStudio: React.FC<ThreeStudioProps> = ({ initialModel = 'thunde
     applyLightingPreset(lightPreset);
   }, [lightPreset]);
 
+  // Start recording 60fps WebGL canvas stream
+  const handleStartRecording = () => {
+    if (!rendererRef.current) return;
+    const canvas = rendererRef.current.domElement;
+    try {
+      const stream = (canvas as any).captureStream ? (canvas as any).captureStream(60) : null;
+      if (!stream) {
+        alert('Canvas stream recording is not supported in this browser.');
+        return;
+      }
+      const mimeTypes = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'];
+      const supportedMime = mimeTypes.find(m => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'video/webm';
+      
+      const recorder = new MediaRecorder(stream, { mimeType: supportedMime });
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: supportedMime });
+        const url = URL.createObjectURL(blob);
+        setRecordedVideoUrl(url);
+        setIsRecording(false);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setIsRotating(true);
+      setRotationSpeed(2.0);
+      setRecordSecondsLeft(5);
+
+      let count = 5;
+      const timer = setInterval(() => {
+        count--;
+        setRecordSecondsLeft(count);
+        if (count <= 0) {
+          clearInterval(timer);
+          if (recorder.state === 'recording') {
+            recorder.stop();
+          }
+        }
+      }, 1000);
+    } catch (err) {
+      console.error('Recording error:', err);
+      setIsRecording(false);
+    }
+  };
+
   return (
     <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-slate-950 select-none">
       {/* 3D WebGL Canvas Mount (Isolated from React UI re-renders) */}
@@ -906,8 +978,23 @@ export const ThreeStudio: React.FC<ThreeStudioProps> = ({ initialModel = 'thunde
         </span>
       </div>
 
-      {/* Top Right Quick Actions: Audio & Reset View */}
+      {/* Top Right Quick Actions: Audio, 3D Video Record & Reset View */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2 pointer-events-auto">
+        {/* Record 3D Video Button */}
+        <button
+          onClick={isRecording ? undefined : handleStartRecording}
+          disabled={isRecording}
+          className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 text-xs font-semibold border ${
+            isRecording
+              ? 'bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse'
+              : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+          }`}
+          title="Record live 60fps 3D WebGL scene to video (100% Free, Client-side)"
+        >
+          <Video className={`w-4 h-4 ${isRecording ? 'text-rose-400 animate-spin' : 'text-rose-400'}`} />
+          <span>{isRecording ? `Recording (${recordSecondsLeft}s)...` : 'Record 3D Video'}</span>
+        </button>
+
         <button
           onClick={() => {
             setSoundEnabled(!soundEnabled);
@@ -931,6 +1018,61 @@ export const ThreeStudio: React.FC<ThreeStudioProps> = ({ initialModel = 'thunde
           <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
+
+      {/* Recorded 3D Video Floating Preview Modal */}
+      {recordedVideoUrl && (
+        <div className="absolute top-16 right-4 z-40 bg-slate-900/95 border border-slate-700 rounded-2xl p-4 shadow-2xl w-80 space-y-3 pointer-events-auto animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <Film className="w-4 h-4" />
+              <span>3D Video Captured (60fps)</span>
+            </span>
+            <button
+              onClick={() => setRecordedVideoUrl(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video flex items-center justify-center">
+            <video
+              src={recordedVideoUrl}
+              controls
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <a
+              href={recordedVideoUrl}
+              download={`${activeModel}_3d_scene.webm`}
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-400" />
+              <span>Download</span>
+            </a>
+
+            {onAttachVideoToChapter && (
+              <button
+                onClick={() => {
+                  onAttachVideoToChapter(1, recordedVideoUrl);
+                  setIsAttachedToast(true);
+                  setTimeout(() => setIsAttachedToast(false), 3000);
+                }}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              >
+                {isAttachedToast ? <Check className="w-3.5 h-3.5" /> : <Film className="w-3.5 h-3.5" />}
+                <span>{isAttachedToast ? 'Attached!' : 'To Chapter 1'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Collapsible Unified Bottom Control Dock (<= 15% Viewport Footprint, Solid Surfaces, No backdrop-filter over WebGL) */}
       <div

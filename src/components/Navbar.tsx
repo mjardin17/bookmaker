@@ -199,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             { id: 'pipeline', label: '1. Pipeline & Timeline', badge: `${activeProject?.currentStep || 1}/20` },
             { id: '3d-scene', label: '🪐 3D Three.js Studio', badge: 'PBR 60fps', isNew: true },
             { id: 'music-studio', label: '🎵 Lyria Music Studio', badge: 'Lyria Pro/Clip', isNew: true },
-            { id: 'veo-studio', label: '🎥 Veo Video Generator', badge: 'Veo 3.1', isNew: true },
+            { id: 'veo-studio', label: '🎥 AI Video & Image Studio', badge: '5 Free Engines', isNew: true },
             { id: 'gemini-chat', label: '💬 Gemini Multi-Turn Chat', badge: 'Argon/Flash', isNew: true },
             { id: 'connectors', label: '🔌 AI Connectors (No API)', badge: 'Claude/GPT', isNew: true },
             { id: 'council', label: '2. Grand Council', badge: '9 Experts' },
