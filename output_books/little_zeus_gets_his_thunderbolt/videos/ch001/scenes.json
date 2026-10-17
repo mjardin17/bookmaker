@@ -1,0 +1,105 @@
+[
+  {
+    "scene_number": 1,
+    "title": "The Missing Thunderbolt - Beat 1",
+    "timestamp": "0:00",
+    "timestamp_seconds": 0,
+    "duration_seconds": 45,
+    "characters_present": [
+      "Little Zeus",
+      "Baby Hercules",
+      "Athena"
+    ],
+    "narration_excerpt": "Way up above the soft white clouds, Little Zeus woke up with excitement...",
+    "visual_description": "Cinematic shot of Way up above the soft white clouds, Little Zeus woke up with excitement. Character action: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder)",
+    "camera_motion": "pan-right",
+    "transition": "bounce-pop",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 1: Way up above the soft white clouds, Little Zeus woke up with excitement. Featuring: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  },
+  {
+    "scene_number": 2,
+    "title": "The Missing Thunderbolt - Beat 2",
+    "timestamp": "0:45",
+    "timestamp_seconds": 45,
+    "duration_seconds": 38,
+    "characters_present": [
+      "Little Zeus",
+      "Baby Hercules"
+    ],
+    "narration_excerpt": "They found Baby Hercules playing in the sunny palace courtyard...",
+    "visual_description": "Cinematic shot of They found Baby Hercules playing in the sunny palace courtyard. Character action: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape)",
+    "camera_motion": "zoom-in",
+    "transition": "iris-wipe",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 2: They found Baby Hercules playing in the sunny palace courtyard. Featuring: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  },
+  {
+    "scene_number": 3,
+    "title": "The Missing Thunderbolt - Beat 3",
+    "timestamp": "1:23",
+    "timestamp_seconds": 83,
+    "duration_seconds": 35,
+    "characters_present": [
+      "Little Zeus",
+      "Athena"
+    ],
+    "narration_excerpt": "Athena unrolled an ancient map of Mount Olympus and studied every path...",
+    "visual_description": "Cinematic shot of Athena unrolled an ancient map of Mount Olympus and studied every path. Character action: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder)",
+    "camera_motion": "tracking-shot",
+    "transition": "cross-dissolve",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 3: Athena unrolled an ancient map of Mount Olympus and studied every path. Featuring: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  },
+  {
+    "scene_number": 4,
+    "title": "The Missing Thunderbolt - Beat 4",
+    "timestamp": "1:58",
+    "timestamp_seconds": 118,
+    "duration_seconds": 25,
+    "characters_present": [
+      "Baby Hercules",
+      "Athena"
+    ],
+    "narration_excerpt": "\"Do you hear that strange rumbling noise ahead?\" Baby Hercules asked softly...",
+    "visual_description": "Cinematic shot of \"Do you hear that strange rumbling noise ahead?\" Baby Hercules asked softly. Character action: Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder)",
+    "camera_motion": "pan-left",
+    "transition": "slide-left",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 4: \"Do you hear that strange rumbling noise ahead?\" Baby Hercules asked softly. Featuring: Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  },
+  {
+    "scene_number": 5,
+    "title": "The Missing Thunderbolt - Beat 5",
+    "timestamp": "2:23",
+    "timestamp_seconds": 143,
+    "duration_seconds": 16,
+    "characters_present": [
+      "Little Zeus",
+      "Baby Hercules",
+      "Athena"
+    ],
+    "narration_excerpt": "\"Look at that strange dark cloud over the valley,\" Little Zeus whispered...",
+    "visual_description": "Cinematic shot of \"Look at that strange dark cloud over the valley,\" Little Zeus whispered. Character action: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder)",
+    "camera_motion": "zoom-out",
+    "transition": "star-wipe",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 5: \"Look at that strange dark cloud over the valley,\" Little Zeus whispered. Featuring: Little Zeus (Small boy with wild curly white hair, tiny golden crown, electric blue eyes, white toga with gold trim); Baby Hercules (Chubby toddler with enormous muscular arms, tiny lion cape); Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  },
+  {
+    "scene_number": 6,
+    "title": "The Missing Thunderbolt - Beat 6",
+    "timestamp": "2:39",
+    "timestamp_seconds": 159,
+    "duration_seconds": 40,
+    "characters_present": [
+      "Athena"
+    ],
+    "narration_excerpt": "\"We are the greatest team on Mount Olympus,\" Zeus said with pride...",
+    "visual_description": "Cinematic shot of \"We are the greatest team on Mount Olympus,\" Zeus said with pride. Character action: Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder)",
+    "camera_motion": "dramatic-shake",
+    "transition": "bounce-pop",
+    "illustration_prompt": "Classic 1990s 2d Saturday morning cartoon style, vibrant primary colors, bold expressive outlines, dynamic action framing, nostalgic cel-shaded aesthetic. Scene 6: \"We are the greatest team on Mount Olympus,\" Zeus said with pride. Featuring: Athena (Smart girl with grey-streaked hair, tiny toy owl on shoulder). Vibrant colors, detailed background, dynamic composition, 16:9 widescreen ratio, masterwork storytelling.",
+    "aspect_ratio": "16:9"
+  }
+]

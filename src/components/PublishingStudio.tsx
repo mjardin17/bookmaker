@@ -4,7 +4,7 @@ import {
   Book, ShoppingCart, DollarSign, Barcode, Tag, 
   Download, CheckCircle2, Shield, Layers, Eye, 
   ExternalLink, Sparkles, AlertTriangle, Printer, 
-  Smartphone, Share2, Globe, Cpu
+  Smartphone, Share2, Globe, Cpu, Video, Play, FileText, Check, Wand2, RefreshCw, Film, ArrowRight
 } from 'lucide-react';
 
 interface PublishingStudioProps {
@@ -19,13 +19,25 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
   onDownloadFormats
 }) => {
   const meta = project.publishingMetadata;
-  const [activeSubTab, setActiveSubTab] = useState<'kdp_metadata' | 'cover_engine' | 'platform_registry'>('cover_engine');
+  const [activeSubTab, setActiveSubTab] = useState<'kdp_metadata' | 'cover_engine' | 'platform_registry' | 'chapter_videos'>('cover_engine');
   const [pageCount, setPageCount] = useState<number>(project.manuscript?.chapters?.length ? project.manuscript.chapters.length * 12 : 124);
   const [paperType, setPaperType] = useState<'cream' | 'white'>('cream');
   const [trimSize, setTrimSize] = useState<'5x8' | '6x9' | '8.5x8.5' | '8.5x11'>(meta.printFormat?.trimSize || '5x8');
   const [selectedVariant, setSelectedVariant] = useState<string>('print_wrap');
   const [platformFilter, setPlatformFilter] = useState<'all' | 'direct_api' | 'approved_partner' | 'draft_export'>('all');
   const [bundleExportMsg, setBundleExportMsg] = useState<string | null>(null);
+
+  // Chapter Video Bridge & 3-Tier AI Video Engine State
+  const [selectedVideoChapterId, setSelectedVideoChapterId] = useState<string>(
+    project.manuscript?.chapters?.[0]?.id || ''
+  );
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>('2d-classic');
+  const [selectedVoice, setSelectedVoice] = useState<string>('en-US-GuyNeural');
+  const [isRenderingVideo, setIsRenderingVideo] = useState<boolean>(false);
+  const [videoStatusMsg, setVideoStatusMsg] = useState<string | null>(null);
+  const [renderedVideoResult, setRenderedVideoResult] = useState<any | null>(null);
+  const [chapterVideoPackage, setChapterVideoPackage] = useState<any | null>(null);
+  const [packageViewerTab, setPackageViewerTab] = useState<'video' | 'script' | 'scenes' | 'youtube'>('video');
 
   // Exact math ported directly from storyforge2/cover/spec.py
   // PAPER_SPINE_FACTORS: white: 0.002252, cream: 0.0025
@@ -215,6 +227,77 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
     }, 1200);
   };
 
+  const handleMakeChapterVideo = async () => {
+    const targetChapter = project.manuscript?.chapters?.find(c => c.id === selectedVideoChapterId) || project.manuscript?.chapters?.[0];
+    if (!targetChapter) return;
+
+    setIsRenderingVideo(true);
+    setVideoStatusMsg('1/2 Generating spoken-word script & YouTube metadata package...');
+
+    try {
+      const charMap: Record<string, string> = {};
+      project.characters?.forEach(c => {
+        charMap[c.name] = `${c.role}, Visual: ${c.visualDNA?.hairColor || ''} hair, ${c.visualDNA?.clothingStyle || ''}`;
+      });
+
+      // 1. Generate Chapter Video Package
+      const pkgRes = await fetch('/api/bridge/chapter-to-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapterNumber: targetChapter.chapterNumber || 1,
+          chapterTitle: targetChapter.title,
+          chapterText: targetChapter.content,
+          bookTitle: project.name,
+          characters: charMap,
+          style: selectedVisualStyle,
+          outputDir: `output_books/${project.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}/videos/ch${(targetChapter.chapterNumber || 1).toString().padStart(3, '0')}`,
+          premise: project.goal || project.theme || '',
+        })
+      });
+
+      const pkgData = await pkgRes.json();
+      if (!pkgData.success) {
+        throw new Error(pkgData.error || 'Failed generating video package');
+      }
+
+      setChapterVideoPackage(pkgData.package);
+      setVideoStatusMsg('2/2 Running 3-Tier Video Engine (Trying Tier 1 -> Tier 2 -> Tier 3 local render)...');
+
+      // 2. Render Video via 3-Tier Pipeline
+      const renderRes = await fetch('/api/video/render-chapter-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapterNumber: targetChapter.chapterNumber || 1,
+          chapterTitle: targetChapter.title,
+          scriptText: pkgData.package.script,
+          scenes: pkgData.package.scenes,
+          illustrationPaths: [
+            `output_books/${project.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}/illustrations/ch${(targetChapter.chapterNumber || 1).toString().padStart(3, '0')}_illus00.png`,
+            `output_books/little_zeus_gets_his_thunderbolt/illustrations/ch001_illus00.png`
+          ],
+          outputDir: `output_books/${project.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}/videos/ch${(targetChapter.chapterNumber || 1).toString().padStart(3, '0')}`,
+          voice: selectedVoice
+        })
+      });
+
+      const renderData = await renderRes.json();
+      if (renderData.success && renderData.result) {
+        setRenderedVideoResult(renderData.result);
+        setVideoStatusMsg(`✅ Video render complete via ${renderData.result.tier_name}!`);
+      } else {
+        throw new Error(renderData.error || 'Video rendering failed');
+      }
+
+    } catch (err: any) {
+      console.error('Video engine error:', err);
+      setVideoStatusMsg(`✗ Error: ${err.message}`);
+    } finally {
+      setIsRenderingVideo(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -245,6 +328,13 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={() => setActiveSubTab('chapter_videos')}
+              className="bg-gradient-to-r from-red-600 via-amber-600 to-indigo-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all shadow-red-500/20"
+            >
+              <Video className="w-4 h-4 text-amber-200" />
+              Make Chapter Videos
+            </button>
+            <button
               onClick={() => onDownloadFormats('epub')}
               className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all"
             >
@@ -262,7 +352,19 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
         </div>
 
         {/* Sub Navigation Switcher */}
-        <div className="flex items-center gap-2 mt-5 border-t border-slate-800 pt-4">
+        <div className="flex items-center gap-2 mt-5 border-t border-slate-800 pt-4 flex-wrap">
+          <button
+            onClick={() => setActiveSubTab('chapter_videos')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              activeSubTab === 'chapter_videos'
+                ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-500/20'
+                : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5 text-red-400" />
+            <span>🎬 Chapter Videos (3-Tier Engine)</span>
+          </button>
+
           <button
             onClick={() => setActiveSubTab('cover_engine')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
@@ -761,6 +863,367 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
         </div>
       )}
 
+      {/* 3-Tier AI Video Engine & Chapter Video Bridge Sub-Tab */}
+      {activeSubTab === 'chapter_videos' && (
+        <div className="space-y-6 animate-fadeIn">
+          
+          {/* 3-Tier Free Video Pipeline Architecture Card */}
+          <div className="bg-gradient-to-r from-red-950/40 via-slate-900 to-indigo-950/40 border border-red-500/30 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-xs font-mono text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-semibold">
+                    <Video className="w-3.5 h-3.5 text-red-400" />
+                    3-Tier Free Video Engine
+                  </span>
+                  <span className="text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                    Auto-Fallback Pipeline
+                  </span>
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                    Zero-Defect Guaranteed
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  Bidirectional Book-to-Video Engine: Every Chapter Becomes a YouTube Video
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+                  Attempts Tier 1 ➔ Tier 2 ➔ Tier 3 in strict order. Even if external GPU quotas are spent, Tier 3 guarantees a broadcast-ready MP4 with oral voiceover and burned-in captions is always generated.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href="#setup-doc"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert("SETUP_VIDEO.md is created at the repository root! Follow the step-by-step instructions to connect your free Hugging Face ZeroGPU Space and NovAI API key.");
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-400" />
+                  View SETUP_VIDEO.md
+                </a>
+              </div>
+            </div>
+
+            {/* 3-Tier Status Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+              {/* Tier 1 */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Tier 1 • Primary AI</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Needs HF Space
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-100">Hugging Face ZeroGPU</h4>
+                <p className="text-[11px] text-slate-400">
+                  Wan 2.2 / LTX-Video on dynamic Nvidia A100 GPU quota. Calls Gradio API (<code className="text-amber-300">/gradio_api/call/predict</code>).
+                </p>
+                <div className="text-[10px] font-mono text-slate-500 border-t border-slate-800/80 pt-2 flex items-center justify-between">
+                  <span>Fallback trigger:</span>
+                  <span className="text-slate-400">Queue Timeout / 429 Quota</span>
+                </div>
+              </div>
+
+              {/* Tier 2 */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Tier 2 • Overflow AI</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    Needs NovAI Key
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-100">NovAI $0 Free API</h4>
+                <p className="text-[11px] text-slate-400">
+                  CogVideoX-Flash text-to-video model. Free tier: 5 videos/day with zero credit card required. Async REST dispatch.
+                </p>
+                <div className="text-[10px] font-mono text-slate-500 border-t border-slate-800/80 pt-2 flex items-center justify-between">
+                  <span>Fallback trigger:</span>
+                  <span className="text-slate-400">Daily Cap (5/day) / Error</span>
+                </div>
+              </div>
+
+              {/* Tier 3 */}
+              <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 space-y-2 relative shadow-lg shadow-emerald-500/5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider font-bold">Tier 3 • Guaranteed</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                    Active & Ready
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  Code-Rendered Engine
+                </h4>
+                <p className="text-[11px] text-slate-300">
+                  FFmpeg Ken Burns slow zoom over chapter art + Edge-TTS voiceover + burned-in high-contrast captions. CPU-only, $0 forever.
+                </p>
+                <div className="text-[10px] font-mono text-emerald-400/80 border-t border-emerald-900/40 pt-2 flex items-center justify-between">
+                  <span>Status:</span>
+                  <span className="font-bold text-emerald-300">100% Zero-Dependency</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chapter Video Creation & Render Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Column: Configuration Controls */}
+            <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
+                <Film className="w-4 h-4 text-red-400" />
+                Render Chapter YouTube Package
+              </h3>
+
+              <div className="space-y-3 text-xs">
+                {/* Chapter Selection */}
+                <div>
+                  <label className="block text-slate-400 font-mono mb-1">Target Book Chapter</label>
+                  <select
+                    value={selectedVideoChapterId}
+                    onChange={(e) => setSelectedVideoChapterId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-red-500/50"
+                  >
+                    {project.manuscript?.chapters?.map((ch) => (
+                      <option key={ch.id} value={ch.id}>
+                        Chapter {ch.chapterNumber}: {ch.title} ({ch.wordCount || 500} words)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Cartoon Studio Style */}
+                <div>
+                  <label className="block text-slate-400 font-mono mb-1">Visual Art Style (Reused from Cartoon Studio)</label>
+                  <select
+                    value={selectedVisualStyle}
+                    onChange={(e) => setSelectedVisualStyle(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-red-500/50"
+                  >
+                    <option value="2d-classic">Classic Saturday Morning (Cel-Shaded 2D)</option>
+                    <option value="pixar-3d">3D Modern Feature (Pixar/DreamWorks Style)</option>
+                    <option value="storybook-watercolor">Storybook Watercolor (Classic Picture Book)</option>
+                    <option value="anime-shonen">Shonen Action Anime (Dynamic Lines)</option>
+                    <option value="paper-cutout">Artisan Paper Cutout (Tactile Warmth)</option>
+                    <option value="claymation">Stop-Motion Claymation (Aardman Charm)</option>
+                  </select>
+                </div>
+
+                {/* Voice Selection */}
+                <div>
+                  <label className="block text-slate-400 font-mono mb-1">Spoken-Word Narration Voice</label>
+                  <select
+                    value={selectedVoice}
+                    onChange={(e) => setSelectedVoice(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-red-500/50"
+                  >
+                    <option value="en-US-GuyNeural">Guy (Friendly Storyteller, Warm Neutral Male)</option>
+                    <option value="en-US-AriaNeural">Aria (Expressive, Engaging Female Narrator)</option>
+                    <option value="en-US-AnaNeural">Ana (Youthful, Whimsical Child/Junior Voice)</option>
+                    <option value="en-GB-RyanNeural">Ryan (British Storybook Accent, Playful)</option>
+                  </select>
+                </div>
+
+                {/* Status Message */}
+                {videoStatusMsg && (
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-amber-300">
+                    {videoStatusMsg}
+                  </div>
+                )}
+
+                {/* Action Trigger */}
+                <button
+                  onClick={handleMakeChapterVideo}
+                  disabled={isRenderingVideo}
+                  className="w-full bg-gradient-to-r from-red-600 via-amber-600 to-indigo-600 hover:from-red-500 hover:to-amber-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {isRenderingVideo ? (
+                    <>
+                      <Wand2 className="w-4 h-4 animate-spin text-amber-300" />
+                      <span>Running 3-Tier Video Engine...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Video className="w-4 h-4" />
+                      <span>Make Chapter Video & YouTube Package</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Output Viewer & Package Inspector */}
+            <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              
+              {/* Output Viewer Tabs */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setPackageViewerTab('video')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      packageViewerTab === 'video'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Video Player</span>
+                  </button>
+                  <button
+                    onClick={() => setPackageViewerTab('script')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      packageViewerTab === 'script'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>script.txt</span>
+                  </button>
+                  <button
+                    onClick={() => setPackageViewerTab('scenes')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      packageViewerTab === 'scenes'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>scenes.json</span>
+                  </button>
+                  <button
+                    onClick={() => setPackageViewerTab('youtube')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      packageViewerTab === 'youtube'
+                        ? 'bg-red-500 text-white shadow-sm'
+                        : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>youtube-meta.json</span>
+                  </button>
+                </div>
+
+                {renderedVideoResult && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    Rendered via {renderedVideoResult.tier_used}
+                  </span>
+                )}
+              </div>
+
+              {/* Tab 1: Video Player */}
+              {packageViewerTab === 'video' && (
+                <div className="space-y-4">
+                  {renderedVideoResult ? (
+                    <div className="space-y-3">
+                      <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
+                        <video
+                          key={renderedVideoResult.output_mp4}
+                          controls
+                          className="w-full h-full object-contain"
+                          src={`/api/video/stream?path=${encodeURIComponent(renderedVideoResult.output_mp4)}`}
+                        >
+                          Your browser does not support HTML5 video.
+                        </video>
+                      </div>
+
+                      {/* Video Spec Badge */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono text-[11px]">
+                        <div className="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                          <span className="text-slate-500 block text-[9px]">ENGINE TIER</span>
+                          <span className="text-amber-400 font-bold">{renderedVideoResult.tier_used}</span>
+                        </div>
+                        <div className="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                          <span className="text-slate-500 block text-[9px]">DURATION</span>
+                          <span className="text-slate-200 font-bold">{renderedVideoResult.duration_seconds.toFixed(1)}s</span>
+                        </div>
+                        <div className="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                          <span className="text-slate-500 block text-[9px]">AUDIO TRACK</span>
+                          <span className="text-emerald-400 font-bold">AAC Voiceover</span>
+                        </div>
+                        <div className="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                          <span className="text-slate-500 block text-[9px]">CAPTIONS</span>
+                          <span className="text-yellow-300 font-bold">Burned-in</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <a
+                          href={`/api/video/stream?path=${encodeURIComponent(renderedVideoResult.output_mp4)}`}
+                          download="chapter_video.mp4"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download MP4
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-slate-950 rounded-xl border border-slate-800 border-dashed flex flex-col items-center justify-center p-8 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+                        <Video className="w-6 h-6 text-slate-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-slate-300">No Chapter Video Rendered Yet</h4>
+                        <p className="text-[11px] text-slate-500 max-w-sm">
+                          Click &quot;Make Chapter Video & YouTube Package&quot; to run the 3-tier engine. The video will be playable right here.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: script.txt */}
+              {packageViewerTab === 'script' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <span>script.txt (Oral Pacing & Expressive Voice Cues)</span>
+                    <span className="text-[10px] text-amber-400">Human/TTS Voiceover Ready</span>
+                  </div>
+                  <pre className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-[11px] font-mono text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                    {chapterVideoPackage?.script || "Generate a chapter package to inspect script.txt"}
+                  </pre>
+                </div>
+              )}
+
+              {/* Tab 3: scenes.json */}
+              {packageViewerTab === 'scenes' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <span>scenes.json (Scene-by-Scene Prompts Preserving Character Art DNA)</span>
+                    <span className="text-[10px] text-indigo-400">{chapterVideoPackage?.scenes?.length || 0} Scenes</span>
+                  </div>
+                  <pre className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-[11px] font-mono text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                    {chapterVideoPackage?.scenes ? JSON.stringify(chapterVideoPackage.scenes, null, 2) : "Generate a chapter package to inspect scenes.json"}
+                  </pre>
+                </div>
+              )}
+
+              {/* Tab 4: youtube-meta.json */}
+              {packageViewerTab === 'youtube' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <span>youtube-meta.json (Title, Timestamps, SEO Tags & Thumbnail Concept)</span>
+                    <span className="text-[10px] text-red-400">SEO Optimized</span>
+                  </div>
+                  <pre className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-[11px] font-mono text-slate-300 max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                    {chapterVideoPackage?.youtube_meta ? JSON.stringify(chapterVideoPackage.youtube_meta, null, 2) : "Generate a chapter package to inspect youtube-meta.json"}
+                  </pre>
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 };
+

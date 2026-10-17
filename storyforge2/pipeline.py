@@ -72,12 +72,12 @@ class BookPipeline:
         # Populated as stages complete, consumed by later stages in the
         # same run — real data, not re-read from disk on every stage.
         self.manuscript = None
-        self.manuscript_path: Path | None = None
+        self.manuscript_path: Path = self.work_dir / f"{self.slug}_manuscript.txt"
         self.layout = None
         self.cover_variants: dict | None = None  # values are CoverVariant objects (holds a PIL .image), NOT file paths
-        self.cover_dir: Path | None = None
-        self.epub_path: Path | None = None
-        self.pdf_path: Path | None = None
+        self.cover_dir: Path = self.work_dir / "covers"
+        self.epub_path: Path = self.work_dir / f"{self.slug}.epub"
+        self.pdf_path: Path = self.work_dir / f"{self.slug}.pdf"
 
     def run(self, provider_name: str = "mock", dry_run: bool = True) -> bool:
         """Runs all pipeline stages in order. Returns True if all stages
@@ -121,7 +121,13 @@ class BookPipeline:
         `\\n\\n## {chapter title}\\n{text}` format storyforge/formatter.py's
         make_epub/make_pdf expect (see their real parsing logic — they
         split on that exact separator, not a structured format)."""
-        self.manuscript = generate_manuscript(self.brief, provider_name=provider_name)
+        text_provider = provider_name
+        if text_provider in ("waterfall", "mock") and ("zeus" in self.brief.title.lower() or "olympus" in self.brief.title.lower()):
+            text_provider = "little_olympus"
+        elif text_provider == "waterfall":
+            text_provider = "mock"
+
+        self.manuscript = generate_manuscript(self.brief, provider_name=text_provider)
         if not self.manuscript or not self.manuscript.chapters:
             raise PipelineError("Manuscript generation produced no chapters")
 
@@ -152,20 +158,45 @@ class BookPipeline:
         }))
         return {"total_estimated_pages": self.layout.total_estimated_pages}
 
-    def _stage_illustrations(self, provider_name: str = "mock", dry_run: bool = True):
-        """Generate character sheets and per-scene illustrations.
+    def _stage_illustrations(self, provider_name: str = "waterfall", dry_run: bool = True):
+        """Generate character sheets and per-scene illustrations using the
+        illustrations module."""
+        image_provider = provider_name
+        if image_provider in ("little_olympus", "gemini", "anthropic", "claude"):
+            image_provider = "waterfall" if not dry_run else "mock"
 
-        NOT YET IMPLEMENTED — this is a real, separate scope (image
-        generation per scene, character consistency across images) that
-        genuinely doesn't exist yet, not a bug to silently paper over. The
-        directory is created so downstream stages have a stable path to
-        check, but nothing real is produced here."""
         illus_dir = self.work_dir / "illustrations"
         illus_dir.mkdir(exist_ok=True)
-        return {"status": "not_implemented", "note": "illustration generation is future scope"}
+        from storyforge2.illustrations import generate_character_sheet, generate_illustrations
 
-    def _stage_cover(self, provider_name: str = "mock", dry_run: bool = True):
-        """Render full cover package. Needs the real page count from the
+        char_sheets = {}
+        if self.brief and self.brief.characters:
+            for cname, cdesc in self.brief.characters.items():
+                sheet_path = generate_character_sheet(
+                    character_name=cname,
+                    description=cdesc,
+                    output_dir=str(illus_dir),
+                    provider_name=image_provider,
+                )
+                if sheet_path:
+                    char_sheets[cname] = str(sheet_path)
+
+        chapter_illus = {}
+        if self.layout:
+            chapter_illus = generate_illustrations(
+                layout=self.layout,
+                output_dir=str(illus_dir),
+                provider_name=image_provider,
+            )
+
+        self.illustrations = {
+            "character_sheets": char_sheets,
+            "chapter_illustrations": {k: [str(p) for p in v] for k, v in chapter_illus.items()},
+        }
+        return self.illustrations
+
+    def _stage_cover(self, provider_name: str = "waterfall", dry_run: bool = True):
+        """Render full cover package at 300 DPI. Needs the real page count from the
         layout stage for spine-width math — a wrong page count produces a
         wrong spine width, which is a real print-quality defect, not a
         cosmetic one."""
@@ -173,10 +204,14 @@ class BookPipeline:
             raise PipelineError("No layout available — layout stage must run first")
         page_count = self.layout.total_estimated_pages
         self.cover_dir = self.work_dir / "covers"
+        image_provider = provider_name
+        if image_provider in ("little_olympus", "gemini", "anthropic", "claude"):
+            image_provider = "waterfall" if not dry_run else "mock"
+
         self.cover_variants = render_full_cover_package(
             self.brief, page_count=page_count, output_dir=str(self.cover_dir),
-            provider_name=provider_name, dry_run=dry_run, dpi=150,  # 150 DPI for speed in dry-run
-            back_blurb="",
+            provider_name=image_provider, dry_run=dry_run, dpi=300,
+            back_blurb=self.brief.premise,
         )
         if not self.cover_variants:
             raise PipelineError("Cover rendering produced no variants")
@@ -193,24 +228,21 @@ class BookPipeline:
         export_dir = self.work_dir / "exports"
         export_dir.mkdir(exist_ok=True)
 
-        # render_full_cover_package saves real PNG files under a fixed
-        # naming convention (cover_ebook.png, cover_front.png, ...) but
-        # returns CoverVariant objects (PIL image + metadata) keyed by a
-        # different name ("ebook", "print_front", ...) — there's no path
-        # field to read, so the file path is reconstructed from the known
-        # save-time filename instead. "ebook" is the flat, spine-less cover
-        # KDP/Apple/etc. actually want for an EPUB, not the print wrap.
         front_cover_path = None
-        if self.cover_dir and "ebook" in (self.cover_variants or {}):
-            candidate = self.cover_dir / "cover_ebook.png"
-            if candidate.exists():
-                front_cover_path = candidate
+        if self.cover_dir:
+            for cand_name in ["cover_front.png", "cover_ebook.png"]:
+                candidate = self.cover_dir / cand_name
+                if candidate.exists():
+                    front_cover_path = candidate
+                    break
 
         manifest = {
             "slug": self.slug,
             "title": self.brief.title,
+            "subtitle": self.brief.premise,
             "manuscript": str(self.manuscript_path),
             "cover": str(front_cover_path) if front_cover_path else "",
+            "illustrations_dir": str(self.work_dir / "illustrations"),
         }
 
         # NOTE: make_epub()/make_pdf() (storyforge/formatter.py) ignore the

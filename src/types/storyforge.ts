@@ -124,6 +124,10 @@ export interface Chapter {
   cliffhangerHook?: string;
   tickingClockNote?: string;
   pattersonCompliance?: PattersonComplianceReport;
+  attachedVideoUrl?: string;
+  attachedAudioUrl?: string;
+  attachedAudioTitle?: string;
+  attachedIllustrationUrl?: string;
 }
 
 export type AuthorFormulaId = 

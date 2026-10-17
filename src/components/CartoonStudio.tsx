@@ -14,12 +14,18 @@ interface CartoonStudioProps {
   project: PublishingProject;
   onUpdateProject: (updated: Partial<PublishingProject>) => void;
   initialChapterId?: string;
+  onNavigateToVeo?: () => void;
+  onNavigateToLyria?: () => void;
+  onNavigateTo3D?: () => void;
 }
 
 export const CartoonStudio: React.FC<CartoonStudioProps> = ({
   project,
   onUpdateProject,
-  initialChapterId
+  initialChapterId,
+  onNavigateToVeo,
+  onNavigateToLyria,
+  onNavigateTo3D
 }) => {
   // Cartoon episodes stored in project
   const episodes = project.cartoonEpisodes || [];
@@ -223,6 +229,30 @@ export const CartoonStudio: React.FC<CartoonStudioProps> = ({
               >
                 <FileText className="w-4 h-4 text-sky-400" />
                 <span className="hidden sm:inline">Storyboard Sheet</span>
+              </button>
+            )}
+
+            {/* Veo 3.1 Video Studio Shortcut */}
+            {onNavigateToVeo && (
+              <button
+                onClick={onNavigateToVeo}
+                className="bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 text-xs font-semibold px-3 py-2.5 rounded-xl flex items-center gap-1.5 transition-all"
+                title="Render Scene with Veo 3.1 Fast Generator"
+              >
+                <Video className="w-4 h-4 text-sky-400" />
+                <span className="hidden md:inline">Veo 3.1 Video</span>
+              </button>
+            )}
+
+            {/* Lyria Music Studio Shortcut */}
+            {onNavigateToLyria && (
+              <button
+                onClick={onNavigateToLyria}
+                className="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-semibold px-3 py-2.5 rounded-xl flex items-center gap-1.5 transition-all"
+                title="Compose Score with Lyria Pro/Clip"
+              >
+                <Music className="w-4 h-4 text-amber-400" />
+                <span className="hidden md:inline">Lyria Soundtrack</span>
               </button>
             )}
           </div>

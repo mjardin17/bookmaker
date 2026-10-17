@@ -112,18 +112,19 @@ class PDFValidator:
             return False
 
     def _check_first_page_not_blank(self) -> bool:
-        """Heuristic: a blank first page is often a sign of render failure.
-        Checks the text content and annotation count of the first page."""
+        """Checks that the first page has content (either text or embedded images)."""
         try:
             from pypdf import PdfReader
             reader = PdfReader(str(self.pdf_path))
             first_page = reader.pages[0]
             text = first_page.extract_text()
-            if not text or len(text.strip()) < 5:
-                return False  # very little text on first page
-            return True
+            if text and len(text.strip()) >= 5:
+                return True
+            # Check for embedded images (e.g. full-page cover)
+            if hasattr(first_page, "images") and len(first_page.images) > 0:
+                return True
+            return False
         except Exception:
-            # If extraction fails, assume it's OK (might be a content-only page)
             return True
 
 

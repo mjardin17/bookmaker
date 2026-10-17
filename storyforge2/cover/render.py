@@ -151,7 +151,7 @@ def render_full_cover_package(
         front_bg, title=brief.title, author=brief.author_name, subtitle=brief.premise,
         dpi=dpi, style=style,
     )
-    front_cover.save(output_path / "cover_front.png", "PNG")
+    front_cover.save(output_path / "cover_front.png", "PNG", dpi=(dpi, dpi))
     results["print_front"] = CoverVariant(
         name="print_front", image=front_cover,
         width_px=front_w_px, height_px=front_h_px, dpi=dpi,
@@ -160,7 +160,7 @@ def render_full_cover_package(
 
     back_bg = (back_art.resize((front_w_px, front_h_px), Image.Resampling.LANCZOS) if back_art else _blank_canvas(front_w_px, front_h_px))
     back_cover = compose_back_cover_text(back_bg, blurb=back_blurb, dpi=dpi, style=style)
-    back_cover.save(output_path / "cover_back.png", "PNG")
+    back_cover.save(output_path / "cover_back.png", "PNG", dpi=(dpi, dpi))
     results["print_back"] = CoverVariant(
         name="print_back", image=back_cover,
         width_px=front_w_px, height_px=front_h_px, dpi=dpi,
@@ -176,7 +176,7 @@ def render_full_cover_package(
     wrap.paste(back_cover, (bleed_px, bleed_px))
     wrap.paste(front_cover, (bleed_px + front_w_px + inches_to_px(spec.spine_width_in, dpi), bleed_px))
     wrap = compose_spine_text(wrap, spec, title=brief.title, author=brief.author_name, dpi=dpi, style=style)
-    wrap.save(output_path / "cover_full_wrap.png", "PNG")
+    wrap.save(output_path / "cover_full_wrap.png", "PNG", dpi=(dpi, dpi))
     results["print_full_wrap"] = CoverVariant(
         name="print_full_wrap", image=wrap,
         width_px=wrap_w_px, height_px=wrap_h_px, dpi=dpi,
@@ -189,7 +189,7 @@ def render_full_cover_package(
     ebook_h_px = 2560
     ebook_bg = front_art.resize((ebook_w_px, ebook_h_px), Image.Resampling.LANCZOS) if front_art else _blank_canvas(ebook_w_px, ebook_h_px)
     ebook_cover = compose_front_cover_text(ebook_bg, title=brief.title, author=brief.author_name, subtitle=brief.premise, dpi=72, style=style)
-    ebook_cover.save(output_path / "cover_ebook.png", "PNG")
+    ebook_cover.save(output_path / "cover_ebook.png", "PNG", dpi=(72, 72))
     results["ebook"] = CoverVariant(
         name="ebook", image=ebook_cover,
         width_px=ebook_w_px, height_px=ebook_h_px, dpi=72,
@@ -201,7 +201,7 @@ def render_full_cover_package(
     thumb_size = 500
     thumb_bg = front_art.resize((thumb_size, thumb_size), Image.Resampling.LANCZOS) if front_art else _blank_canvas(thumb_size, thumb_size)
     thumb_cover = compose_front_cover_text(thumb_bg, title=brief.title, author=brief.author_name, dpi=96, style=CoverTextStyle(max_title_size=48, max_author_size=24))
-    thumb_cover.save(output_path / "cover_thumbnail.png", "PNG")
+    thumb_cover.save(output_path / "cover_thumbnail.png", "PNG", dpi=(96, 96))
     results["thumbnail"] = CoverVariant(
         name="thumbnail", image=thumb_cover,
         width_px=thumb_size, height_px=thumb_size, dpi=96,
@@ -216,7 +216,7 @@ def render_full_cover_package(
             social_bg, title=brief.title, author=brief.author_name,
             dpi=72, style=CoverTextStyle(max_title_size=64, max_author_size=36),
         )
-        social_cover.save(output_path / f"cover_social_{platform}.png", "PNG")
+        social_cover.save(output_path / f"cover_social_{platform}.png", "PNG", dpi=(72, 72))
         results[f"social_{platform}"] = CoverVariant(
             name=f"social_{platform}", image=social_cover,
             width_px=width, height_px=height, dpi=72,

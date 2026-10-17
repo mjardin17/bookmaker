@@ -49,15 +49,38 @@ class ImageProvider(ABC):
 
 
 class WaterfallImageProvider(ImageProvider):
-    """Real generation via empire_render.py's proven single-image
-    fetch function — free-tier-first (Wikimedia/Gemini/Pollinations),
-    same as the rest of this repo's image pipeline."""
+    """Real image generation via Pollinations AI with automatic fallback
+    to mock if network is unavailable."""
     name = "waterfall"
 
     def generate(self, prompt: str, dest: Path) -> bool:
-        from empire_render import fetch_one_scene_image
+        import urllib.parse
+        import io
+        import time
+        import requests
+        from PIL import Image
+
         dest.parent.mkdir(parents=True, exist_ok=True)
-        return fetch_one_scene_image(prompt=prompt, work_dir=dest.parent, tag=_slugify(prompt), dest=dest)
+        clean_prompt = prompt.replace("\n", " ").strip()
+        encoded = urllib.parse.quote(clean_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true"
+        headers = {"User-Agent": "BookMaker/1.0 (Little Olympus Children Book Pipeline)"}
+
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, timeout=30, headers=headers)
+                if resp.status_code == 200 and len(resp.content) > 2000:
+                    img = Image.open(io.BytesIO(resp.content)).convert("RGB")
+                    if dest.suffix.lower() == ".png":
+                        img.save(dest, "PNG")
+                    else:
+                        img.save(dest, "JPEG")
+                    return dest.exists()
+            except Exception as e:
+                time.sleep(1)
+
+        # Fallback to mock provider if network generation fails
+        return MockImageProvider().generate(prompt, dest)
 
 
 class MockImageProvider(ImageProvider):
@@ -158,6 +181,9 @@ def generate_illustrations(
                     placement=slot.placement,
                 )
             dest = Path(output_dir) / f"ch{chapter.chapter_number:03d}_illus{slot.slot_index:02d}.png"
+            if dest.exists() and dest.stat().st_size > 0:
+                paths.append(dest)
+                continue
             if provider.generate(slot.prompt, dest):
                 store.register(store.hash_text(slot.prompt))
                 paths.append(dest)

@@ -17,6 +17,10 @@ import { SophisticatedBookEngine } from './components/SophisticatedBookEngine';
 import { SubscriptionConnectorsHub } from './components/SubscriptionConnectorsHub';
 import { NewProjectModal } from './components/NewProjectModal';
 import { EmpireOSSystemStatusModal } from './components/EmpireOSSystemStatusModal';
+import { ThreeStudio } from './components/ThreeStudio';
+import { LyriaMusicStudio } from './components/LyriaMusicStudio';
+import { VeoVideoStudio } from './components/VeoVideoStudio';
+import { GeminiChatbotStudio } from './components/GeminiChatbotStudio';
 import { Plus, RefreshCw, BookOpen } from 'lucide-react';
 
 const STORAGE_KEY = 'EMPIRE_OS_PROJECTS_V1';
@@ -41,6 +45,7 @@ export default function App() {
   const [mode, setMode] = useState<'beginner' | 'professional'>('professional');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalInitialTab, setModalInitialTab] = useState<'scratch' | 'video'>('scratch');
   const [isSystemStatusOpen, setIsSystemStatusOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -235,15 +240,36 @@ export default function App() {
     theme: string;
     educationalGoals: string[];
     mode: 'beginner' | 'professional';
+    customChapters?: Chapter[];
+    outline?: any[];
   }) => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/generate-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
+      let manuscriptData: any = null;
+      let result: any = null;
+
+      if (data.customChapters && data.customChapters.length > 0) {
+        manuscriptData = {
+          title: data.title,
+          subtitle: 'Adapted from Video Story',
+          targetAge: data.targetAge,
+          genre: data.genre,
+          theme: data.theme,
+          educationalGoals: data.educationalGoals,
+          wordCountTotal: data.customChapters.reduce((sum, ch) => sum + (ch.wordCount || 0), 0),
+          readingLevelGrade: data.targetAge.includes('Middle') ? 'Grade 5' : 'Grade 8',
+          synopsis: `Complete narrative adapted from video story with ${data.customChapters.length} Patterson-formula compliant chapters.`,
+          chapters: data.customChapters,
+        };
+      } else {
+        const res = await fetch('/api/generate-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        result = await res.json();
+        manuscriptData = result.data?.manuscript;
+      }
 
       const newProj: PublishingProject = {
         id: `empire-proj-${Date.now()}`,
@@ -254,11 +280,11 @@ export default function App() {
         theme: data.theme || 'Courage and discovery',
         mode: data.mode,
         currentStep: 1,
-        status: 'In Research',
+        status: 'Drafting',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
 
-        manuscript: result.data?.manuscript || {
+        manuscript: manuscriptData || {
           title: data.title,
           subtitle: 'Book 1: The Beginning',
           targetAge: data.targetAge,
@@ -288,14 +314,14 @@ export default function App() {
           ]
         },
 
-        worldBible: result.data?.worldBible || INITIAL_PROJECTS[0].worldBible,
-        characters: result.data?.characters || INITIAL_PROJECTS[0].characters,
-        illustrationGuide: result.data?.illustrationGuide || INITIAL_PROJECTS[0].illustrationGuide,
-        scorecard: result.data?.scorecard || INITIAL_PROJECTS[0].scorecard,
-        publishingMetadata: result.data?.publishingMetadata || INITIAL_PROJECTS[0].publishingMetadata,
-        marketingPack: result.data?.marketingPack || INITIAL_PROJECTS[0].marketingPack,
-        videoPack: result.data?.videoPack || INITIAL_PROJECTS[0].videoPack,
-        merchPack: result.data?.merchPack || INITIAL_PROJECTS[0].merchPack,
+        worldBible: result?.data?.worldBible || INITIAL_PROJECTS[0].worldBible,
+        characters: result?.data?.characters || INITIAL_PROJECTS[0].characters,
+        illustrationGuide: result?.data?.illustrationGuide || INITIAL_PROJECTS[0].illustrationGuide,
+        scorecard: result?.data?.scorecard || INITIAL_PROJECTS[0].scorecard,
+        publishingMetadata: result?.data?.publishingMetadata || INITIAL_PROJECTS[0].publishingMetadata,
+        marketingPack: result?.data?.marketingPack || INITIAL_PROJECTS[0].marketingPack,
+        videoPack: result?.data?.videoPack || INITIAL_PROJECTS[0].videoPack,
+        merchPack: result?.data?.merchPack || INITIAL_PROJECTS[0].merchPack,
         analytics: INITIAL_PROJECTS[0].analytics,
         councilDebate: INITIAL_PROJECTS[0].councilDebate,
         cartoonEpisodes: []
@@ -320,7 +346,14 @@ export default function App() {
         projects={projects}
         activeProject={activeProject}
         onSelectProject={setActiveProjectId}
-        onOpenNewModal={() => setIsModalOpen(true)}
+        onOpenNewModal={() => {
+          setModalInitialTab('scratch');
+          setIsModalOpen(true);
+        }}
+        onOpenBookFromVideo={() => {
+          setModalInitialTab('video');
+          setIsModalOpen(true);
+        }}
         onExportPackage={() => setActiveTab('export')}
         onOpenSystemStatus={() => setIsSystemStatusOpen(true)}
         mode={mode}
@@ -362,7 +395,55 @@ export default function App() {
         </main>
       ) : (
         /* Main Workspace Body */
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className={activeTab === '3d-scene' ? 'w-full p-0 m-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'}>
+          {activeTab === '3d-scene' && (
+            <ThreeStudio />
+          )}
+
+          {activeTab === 'music-studio' && (
+            <LyriaMusicStudio
+              project={activeProject}
+              onAssignToChapter={(chNum, audioUrl, title) => {
+                const target = activeProject.manuscript?.chapters?.find(c => c.chapterNumber === chNum) || activeProject.manuscript?.chapters?.[0];
+                if (target) {
+                  handleUpdateChapter(target.id, {
+                    attachedAudioUrl: audioUrl,
+                    attachedAudioTitle: title
+                  });
+                  setActiveTab('manuscript');
+                }
+              }}
+            />
+          )}
+
+          {activeTab === 'veo-studio' && (
+            <VeoVideoStudio
+              project={activeProject}
+              onAttachVideoToChapter={(chNum, videoUrl) => {
+                const target = activeProject.manuscript?.chapters?.find(c => c.chapterNumber === chNum) || activeProject.manuscript?.chapters?.[0];
+                if (target) {
+                  handleUpdateChapter(target.id, {
+                    attachedVideoUrl: videoUrl
+                  });
+                  setActiveTab('manuscript');
+                }
+              }}
+            />
+          )}
+
+          {activeTab === 'gemini-chat' && (
+            <GeminiChatbotStudio
+              project={activeProject}
+              onApplyToChapter={(chapterId, snippet) => {
+                const target = activeProject.manuscript?.chapters?.find(c => c.id === chapterId) || activeProject.manuscript?.chapters?.[0];
+                if (target) {
+                  const updatedContent = `${target.content}\n\n${snippet}`;
+                  handleUpdateChapter(target.id, { content: updatedContent });
+                }
+              }}
+            />
+          )}
+
           {activeTab === 'pipeline' && (
             <PipelineTracker
               project={activeProject}
@@ -415,6 +496,9 @@ export default function App() {
                 setSelectedCartoonChapterId(chapterId);
                 setActiveTab('cartoons');
               }}
+              onNavigateToVeo={() => setActiveTab('veo-studio')}
+              onNavigateToLyria={() => setActiveTab('music-studio')}
+              onNavigateTo3D={() => setActiveTab('3d-scene')}
             />
           )}
 
@@ -423,6 +507,9 @@ export default function App() {
               project={activeProject}
               onUpdateProject={updateActiveProject}
               initialChapterId={selectedCartoonChapterId}
+              onNavigateToVeo={() => setActiveTab('veo-studio')}
+              onNavigateToLyria={() => setActiveTab('music-studio')}
+              onNavigateTo3D={() => setActiveTab('3d-scene')}
             />
           )}
 
@@ -477,6 +564,7 @@ export default function App() {
         onClose={() => setIsModalOpen(false)}
         onCreate={handleCreateProject}
         isLoading={isLoading}
+        initialTab={modalInitialTab}
       />
 
       {/* Empire OS System Status & Capability Audit Modal */}

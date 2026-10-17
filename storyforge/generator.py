@@ -27,7 +27,7 @@ BOOKS_DIR   = Path(__file__).parent / "books"
 NICHE_BOARD = Path(__file__).parent / "NICHE_BOARD.json"
 BOOKS_DIR.mkdir(exist_ok=True)
 
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 HEADERS    = {"User-Agent": "Mozilla/5.0"}
 
 # AI Router for fallback chains

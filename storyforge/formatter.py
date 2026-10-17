@@ -56,17 +56,38 @@ p  { margin: 0.8em 0; text-indent: 1.5em; }
     # Split by chapter headings
     parts = raw.split("\n\n## ")
 
+    illus_dir = Path(manifest.get("illustrations_dir", book_dir / "illustrations"))
+
     for i, part in enumerate(parts[1:], 1):  # skip title block
         lines = part.split("\n", 1)
         ch_title = lines[0].strip()
         ch_body  = lines[1].strip() if len(lines) > 1 else ""
+
+        # Check for chapter illustration
+        img_html = ""
+        illus_candidate = None
+        for pattern in [f"ch{i:03d}_illus00.png", f"ch{i:02d}_illus00.png", f"ch{i:03d}_illus00.jpg"]:
+            cand = illus_dir / pattern
+            if cand.exists():
+                illus_candidate = cand
+                break
+
+        if illus_candidate:
+            epub_img = epub.EpubItem(
+                uid=f"img_ch{i}",
+                file_name=f"images/ch{i}.png",
+                media_type="image/png",
+                content=illus_candidate.read_bytes(),
+            )
+            book.add_item(epub_img)
+            img_html = f'<div style="text-align: center; margin: 1.5em 0;"><img src="images/ch{i}.png" alt="Illustration" style="max-width: 90%; height: auto;" /></div>\n'
 
         # Convert plain text to basic HTML
         paragraphs = "".join(
             f"<p>{para.strip()}</p>\n"
             for para in ch_body.split("\n\n") if para.strip()
         )
-        html = f"<h2>{ch_title}</h2>\n{paragraphs}"
+        html = f"<h2>{ch_title}</h2>\n{img_html}{paragraphs}"
 
         ch = epub.EpubHtml(title=ch_title, file_name=f"chap_{i:02d}.xhtml", lang="en")
         ch.set_content(f"<html><body>{html}</body></html>")
@@ -86,12 +107,12 @@ p  { margin: 0.8em 0; text-indent: 1.5em; }
 
 
 def make_pdf(manifest: dict, book_dir: Path) -> Path:
-    """Generate KDP-ready PDF (6x9 inch) from manuscript."""
+    """Generate KDP-ready PDF (6x9 inch) from manuscript with cover and illustrations."""
     try:
         from reportlab.lib.pagesizes import inch
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Spacer, PageBreak
+            SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image as RLImage
         )
         from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
     except ImportError:
@@ -100,7 +121,7 @@ def make_pdf(manifest: dict, book_dir: Path) -> Path:
 
     out_path  = book_dir / f"{manifest['slug']}.pdf"
     page_size = (6 * inch, 9 * inch)
-    margin    = 0.75 * inch
+    margin    = 0.5 * inch
 
     doc = SimpleDocTemplate(
         str(out_path),
@@ -110,28 +131,51 @@ def make_pdf(manifest: dict, book_dir: Path) -> Path:
     )
 
     styles   = getSampleStyleSheet()
-    title_s  = ParagraphStyle("title",  parent=styles["Title"],  fontSize=22, spaceAfter=12, alignment=TA_CENTER)
-    sub_s    = ParagraphStyle("sub",    parent=styles["Normal"], fontSize=13, spaceAfter=20, alignment=TA_CENTER, textColor="#555555")
-    h2_s     = ParagraphStyle("h2",     parent=styles["Heading2"], fontSize=14, spaceBefore=20, spaceAfter=8)
-    body_s   = ParagraphStyle("body",   parent=styles["Normal"], fontSize=11, leading=16, alignment=TA_JUSTIFY, firstLineIndent=18)
+    title_s  = ParagraphStyle("title",  parent=styles["Title"],  fontSize=20, leading=24, spaceAfter=8, alignment=TA_CENTER)
+    sub_s    = ParagraphStyle("sub",    parent=styles["Normal"], fontSize=11, leading=15, spaceAfter=14, alignment=TA_CENTER, textColor="#555555")
+    h2_s     = ParagraphStyle("h2",     parent=styles["Heading2"], fontSize=13, leading=16, spaceBefore=4, spaceAfter=6, alignment=TA_CENTER)
+    body_s   = ParagraphStyle("body",   parent=styles["Normal"], fontSize=9.5, leading=13.5, spaceAfter=4, alignment=TA_JUSTIFY, firstLineIndent=14)
 
-    story = [
-        Paragraph(manifest["title"],    title_s),
-        Paragraph(manifest.get("subtitle", ""), sub_s),
-        PageBreak(),
-    ]
+    story = []
+
+    # Front cover page if available
+    cover_path = Path(manifest.get("cover", ""))
+    if cover_path.exists():
+        story.append(RLImage(str(cover_path), width=5.0 * inch, height=7.5 * inch))
+        story.append(PageBreak())
+
+    # Title page
+    story.append(Spacer(1, 0.8 * inch))
+    story.append(Paragraph(manifest["title"], title_s))
+    if manifest.get("subtitle"):
+        story.append(Paragraph(manifest["subtitle"], sub_s))
+    story.append(Spacer(1, 0.4 * inch))
+    author = manifest.get("author", "Empire OS Publishing")
+    story.append(Paragraph(f"Written & Illustrated for Little Olympus<br/>Published by {author}", sub_s))
+    story.append(PageBreak())
+
+    illus_dir = Path(manifest.get("illustrations_dir", book_dir / "illustrations"))
 
     manuscript_path = Path(manifest.get("manuscript", ""))
     if manuscript_path.exists():
         raw   = manuscript_path.read_text(encoding="utf-8")
         parts = raw.split("\n\n## ")
 
-        for part in parts[1:]:
+        for i, part in enumerate(parts[1:], 1):
             lines    = part.split("\n", 1)
             ch_title = lines[0].strip()
             ch_body  = lines[1].strip() if len(lines) > 1 else ""
 
             story.append(Paragraph(ch_title, h2_s))
+
+            # Embed chapter illustration
+            for pattern in [f"ch{i:03d}_illus00.png", f"ch{i:02d}_illus00.png", f"ch{i:03d}_illus00.jpg"]:
+                cand = illus_dir / pattern
+                if cand.exists():
+                    story.append(RLImage(str(cand), width=3.2 * inch, height=3.2 * inch))
+                    story.append(Spacer(1, 6))
+                    break
+
             for para in ch_body.split("\n\n"):
                 para = para.strip()
                 if not para:

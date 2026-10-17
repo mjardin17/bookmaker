@@ -2,7 +2,7 @@ import React from 'react';
 import { PublishingProject } from '../types/storyforge';
 import { 
   BookOpen, Plus, Download, Sparkles, Cpu, Search, 
-  Layers, CheckCircle, ShieldCheck, ChevronDown, Sliders, Info, FileArchive
+  Layers, CheckCircle, ShieldCheck, ChevronDown, Sliders, Info, FileArchive, Video
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -10,6 +10,7 @@ interface NavbarProps {
   activeProject: PublishingProject;
   onSelectProject: (id: string) => void;
   onOpenNewModal: () => void;
+  onOpenBookFromVideo: () => void;
   onExportPackage: () => void;
   onOpenSystemStatus: () => void;
   mode: 'beginner' | 'professional';
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeProject,
   onSelectProject,
   onOpenNewModal,
+  onOpenBookFromVideo,
   onExportPackage,
   onOpenSystemStatus,
   mode,
@@ -150,6 +152,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
+            {/* Book from Video Button */}
+            <button
+              onClick={onOpenBookFromVideo}
+              className="bg-red-950/40 hover:bg-red-900/50 text-red-300 hover:text-amber-300 text-xs font-semibold px-2.5 py-2 rounded-lg border border-red-500/30 hover:border-red-500/60 flex items-center gap-1.5 transition-all shadow-sm"
+              title="Convert a YouTube Video Transcript into a complete Book"
+            >
+              <Video className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden sm:inline">Book from Video</span>
+            </button>
+
             {/* New Project Button */}
             <button
               onClick={onOpenNewModal}
@@ -185,6 +197,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-1 overflow-x-auto py-2 border-t border-slate-800/60 no-scrollbar text-xs">
           {[
             { id: 'pipeline', label: '1. Pipeline & Timeline', badge: `${activeProject?.currentStep || 1}/20` },
+            { id: '3d-scene', label: '🪐 3D Three.js Studio', badge: 'PBR 60fps', isNew: true },
+            { id: 'music-studio', label: '🎵 Lyria Music Studio', badge: 'Lyria Pro/Clip', isNew: true },
+            { id: 'veo-studio', label: '🎥 Veo Video Generator', badge: 'Veo 3.1', isNew: true },
+            { id: 'gemini-chat', label: '💬 Gemini Multi-Turn Chat', badge: 'Argon/Flash', isNew: true },
             { id: 'connectors', label: '🔌 AI Connectors (No API)', badge: 'Claude/GPT', isNew: true },
             { id: 'council', label: '2. Grand Council', badge: '9 Experts' },
             { id: 'bookmachine', label: '🖋️ Patterson Book Machine', badge: 'Formula V1', isNew: true },

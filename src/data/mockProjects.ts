@@ -58,6 +58,8 @@ He pried open the oak floor. Beneath lay not stone foundations, but an intricate
           povCharacter: 'Leo (Lead Horologist Apprentice)',
           tickingClockNote: 'T-minus 3 hours before village clock strikes thirteen',
           cliffhangerHook: 'At the center rested a sundial made of dark celestial metal, its shadow pointing not toward the sun, but toward Leo himself.',
+          attachedVideoUrl: '/output_books/little_zeus_gets_his_thunderbolt/videos/ch001/chapter_1_video.mp4',
+          attachedAudioTitle: 'Clockwork Keep Rhythmic Theme (Lyria Pro)',
           pattersonCompliance: {
             overallScore: 96,
             overallGrade: 'A+ (Patterson Masterpiece)',

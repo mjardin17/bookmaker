@@ -1,0 +1,245 @@
+{
+  "title": "Little Zeus Gets His Thunderbolt",
+  "stages": {
+    "manuscript": "PASSED (0 violations)",
+    "layout": "PASSED",
+    "illustrations": "PASSED (8 valid images)",
+    "cover": "PASSED (9/9 variants verified)",
+    "export": "PASSED (EPUB valid, PDF 10 pages)"
+  },
+  "artifacts": {
+    "manuscript": {
+      "path": "output_books/little_zeus_gets_his_thunderbolt/little_zeus_gets_his_thunderbolt_manuscript.txt",
+      "size_bytes": 11434,
+      "chapters": [
+        {
+          "chapter": 1,
+          "title": "The Missing Thunderbolt",
+          "words": 455,
+          "dialogue_ratio": "44.4%",
+          "violations": []
+        },
+        {
+          "chapter": 2,
+          "title": "The Path of Whispering Winds",
+          "words": 468,
+          "dialogue_ratio": "41.0%",
+          "violations": []
+        },
+        {
+          "chapter": 3,
+          "title": "Stormy the Grumpy Cloud",
+          "words": 462,
+          "dialogue_ratio": "48.5%",
+          "violations": []
+        },
+        {
+          "chapter": 4,
+          "title": "The Spark of Friendship",
+          "words": 485,
+          "dialogue_ratio": "40.4%",
+          "violations": []
+        }
+      ],
+      "total_violations": 0
+    },
+    "layout": {
+      "total_estimated_pages": 11,
+      "chapters": 4
+    },
+    "illustrations": {
+      "little_zeus_sheet.png": {
+        "size_bytes": 264824,
+        "dimensions": [
+          768,
+          768
+        ],
+        "format": "PNG"
+      },
+      "athena_sheet.png": {
+        "size_bytes": 4567,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "baby_hercules_sheet.png": {
+        "size_bytes": 4607,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "stormy_the_storm_cloud_sheet.png": {
+        "size_bytes": 4382,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "ch002_illus00.png": {
+        "size_bytes": 6887,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "ch003_illus00.png": {
+        "size_bytes": 6854,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "ch001_illus00.png": {
+        "size_bytes": 6656,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      },
+      "ch004_illus00.png": {
+        "size_bytes": 6651,
+        "dimensions": [
+          512,
+          512
+        ],
+        "format": "PNG"
+      }
+    },
+    "covers": {
+      "cover_front.png": {
+        "dimensions": [
+          1800,
+          2700
+        ],
+        "dpi": [
+          299.9994,
+          299.9994
+        ],
+        "size_bytes": 431571
+      },
+      "cover_back.png": {
+        "dimensions": [
+          1800,
+          2700
+        ],
+        "dpi": [
+          299.9994,
+          299.9994
+        ],
+        "size_bytes": 344183
+      },
+      "cover_full_wrap.png": {
+        "dimensions": [
+          3682,
+          2775
+        ],
+        "dpi": [
+          299.9994,
+          299.9994
+        ],
+        "size_bytes": 677536
+      },
+      "cover_ebook.png": {
+        "dimensions": [
+          1600,
+          2560
+        ],
+        "dpi": [
+          72.009,
+          72.009
+        ],
+        "size_bytes": 362665
+      },
+      "cover_thumbnail.png": {
+        "dimensions": [
+          500,
+          500
+        ],
+        "dpi": [
+          96.012,
+          96.012
+        ],
+        "size_bytes": 42504
+      },
+      "cover_social_instagram.png": {
+        "dimensions": [
+          1080,
+          1080
+        ],
+        "dpi": [
+          72.009,
+          72.009
+        ],
+        "size_bytes": 151157
+      },
+      "cover_social_twitter.png": {
+        "dimensions": [
+          1200,
+          675
+        ],
+        "dpi": [
+          72.009,
+          72.009
+        ],
+        "size_bytes": 107475
+      },
+      "cover_social_pinterest.png": {
+        "dimensions": [
+          1000,
+          1500
+        ],
+        "dpi": [
+          72.009,
+          72.009
+        ],
+        "size_bytes": 183660
+      },
+      "cover_social_facebook.png": {
+        "dimensions": [
+          1200,
+          628
+        ],
+        "dpi": [
+          72.009,
+          72.009
+        ],
+        "size_bytes": 100508
+      }
+    },
+    "epub": {
+      "path": "output_books/little_zeus_gets_his_thunderbolt/little_zeus_gets_his_thunderbolt.epub",
+      "size_bytes": 427846,
+      "item_count": 13,
+      "items": [
+        "cover.png",
+        "cover.xhtml",
+        "style.css",
+        "images/ch1.png",
+        "chap_01.xhtml",
+        "images/ch2.png",
+        "chap_02.xhtml",
+        "images/ch3.png",
+        "chap_03.xhtml",
+        "images/ch4.png"
+      ]
+    },
+    "pdf": {
+      "path": "output_books/little_zeus_gets_his_thunderbolt/little_zeus_gets_his_thunderbolt.pdf",
+      "size_bytes": 620045,
+      "page_count": 10,
+      "dimensions_in": [
+        6.0,
+        9.0
+      ]
+    }
+  },
+  "failures": []
+}
