@@ -32,7 +32,7 @@ const _v1 = new THREE.Vector3();
 const _targetPos = new THREE.Vector3();
 const _targetLook = new THREE.Vector3();
 
-export type ModelId = 'thunderbolt' | 'athena_owl' | 'quantum_core';
+export type ModelId = 'thunderbolt' | 'athena_owl' | 'quantum_core' | 'gorgon_aegis';
 export type MaterialFinish = 'gold' | 'obsidian' | 'marble' | 'titanium';
 export type LightPreset = 'olympian' | 'studio' | 'midnight' | 'golden_hour';
 export type CameraPreset = 'hero' | 'top' | 'low' | 'macro';

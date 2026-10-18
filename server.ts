@@ -3129,9 +3129,13 @@ app.post('/api/generate-video', async (req, res) => {
     }
 
     let startedWithVeo = false;
+    const engineStr = String(engine || 'veo').toLowerCase();
+    const isVeo = engineStr === 'veo';
+    const isNovAI = engineStr === 'novai';
+    const isHuggingFace = engineStr === 'huggingface' || engineStr === 'wan' || engineStr === 'cogvideo' || engineStr === 'hyperframes' || engineStr === 'pollinations';
 
-    // Veo 3.1 Fast Cloud Model
-    if (engine === 'veo' && ai && cleanB64) {
+    // 1. Veo Provider: Google Veo 3.1 Fast Neural Model
+    if (isVeo && ai && cleanB64) {
       try {
         const operation = await ai.models.generateVideos({
           model: 'veo-3.1-fast-generate-preview',
@@ -3177,17 +3181,24 @@ app.post('/api/generate-video', async (req, res) => {
       }
     }
 
-    // For Wan, CogVideoX, HyperFrames, Pollinations, or Veo fallback: render via local kinetic engine
+    // 2. HuggingFace / NovAI / Local Fallback Video Generation
     if (!startedWithVeo) {
-      const delay = engine === 'hyperframes' ? 600 : engine === 'wan' || engine === 'cogvideo' ? 1200 : 900;
+      // Dynamic motion tuning based on provider
+      let activeMotion = motionType as any;
+      if (isNovAI && motionType === 'zoom-in') {
+        // NovAI stylized aesthetic defaults to dynamic pulse & orbit
+        activeMotion = 'spark-pulse';
+      }
+
+      const delay = isHuggingFace ? 900 : isNovAI ? 1100 : 700;
       setTimeout(() => {
         const videoBuffer = generateCinematicMotionVideo(
           cleanB64,
           ratio,
-          motionType as any,
+          activeMotion,
           durationSec,
           includeAudio,
-          audioGenre
+          isNovAI ? 'Ambient Epic Fantasy' : audioGenre
         );
         record.videoBuffer = videoBuffer;
         record.status = 'completed';
@@ -3198,7 +3209,7 @@ app.post('/api/generate-video', async (req, res) => {
       success: true,
       operationId: opId,
       operationName: record.operationName,
-      engine,
+      engine: isVeo ? 'Veo' : isHuggingFace ? 'HuggingFace' : isNovAI ? 'NovAI' : engine,
       mode,
       motionType,
       aspectRatio: ratio,

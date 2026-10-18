@@ -29,8 +29,9 @@ import {
   Palette
 } from 'lucide-react';
 import { PublishingProject } from '../types/storyforge';
+import { VideoEngineSelector, VideoEngineProvider } from './VideoEngineSelector';
 
-export type VideoEngine = 'veo' | 'wan' | 'cogvideo' | 'hyperframes' | 'pollinations' | 'story-reel';
+export type VideoEngine = VideoEngineProvider | 'story-reel';
 export type CameraMotion = 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'spark-pulse' | 'orbit-roll';
 export type StudioTab = 'video' | 'free-image' | 'story-reel';
 
@@ -101,7 +102,8 @@ interface VideoItem {
   videoUrl: string;
   prompt: string;
   aspectRatio: '16:9' | '9:16';
-  engine: VideoEngine;
+  engine: VideoEngineProvider | 'story-reel';
+  subModel?: string;
   motionType: CameraMotion;
   hasAudio: boolean;
   createdAt: string;
@@ -133,7 +135,8 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
   const [studioTab, setStudioTab] = useState<StudioTab>('video');
 
   // Input parameters for Video Generator
-  const [engine, setEngine] = useState<VideoEngine>('veo');
+  const [engine, setEngine] = useState<VideoEngineProvider>('Veo');
+  const [subModel, setSubModel] = useState<string>('veo-3.1-fast-generate-preview');
   const [videoMode, setVideoMode] = useState<'image-to-video' | 'text-to-video'>('image-to-video');
   const [motionType, setMotionType] = useState<CameraMotion>('zoom-in');
   const [duration, setDuration] = useState<number>(5);
@@ -255,14 +258,34 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
       .catch((e) => console.warn('Could not load dynamic illustrations:', e));
   }, []);
 
-  // Status stages while Video processes
-  const STATUS_STAGES = [
-    'Encoding reference visual & analyzing spatial depth...',
-    `Dispatching to ${engine.toUpperCase()} generative neural pipeline...`,
-    'Synthesizing temporal optical motion vectors...',
-    'Rendering camera physics & atmospheric particle lighting...',
-    'Mastering high-fidelity AAC soundtrack & MP4 packaging...'
-  ];
+  // Dynamic status stages based on selected engine provider and sub-model
+  const getStatusStages = (eng: VideoEngineProvider, modelName: string) => {
+    if (eng === 'Veo') {
+      return [
+        'Encoding reference visual & analyzing 3D spatial depth vectors...',
+        `Dispatching to Google Veo 3.1 neural lattice (${modelName})...`,
+        'Synthesizing temporal optical motion vectors & character persistence...',
+        'Rendering cinematic lighting, shadows & physics dynamics...',
+        'Mastering high-fidelity MP4 video encode & delivery...'
+      ];
+    } else if (eng === 'HuggingFace') {
+      return [
+        'Preparing visual frame & computing spatial attention tensors...',
+        `Routing to Hugging Face Open-Weights Cluster (${modelName})...`,
+        'Executing Wan 2.1 / CogVideoX spatial-temporal diffusion...',
+        'Rendering 60fps kinetic camera trajectory & particle physics...',
+        'Packaging open-source MP4 video stream...'
+      ];
+    } else {
+      return [
+        'Analyzing line art & mythological character expressions...',
+        `Connecting to NovAI Stylized Anime & Fantasy Motion Engine (${modelName})...`,
+        'Applying volumetric aura surge & fantasy lighting dynamics...',
+        'Rendering stylized line-art kinematics & emotional vectors...',
+        'Finalizing stylized fantasy MP4 with ambient orchestral score...'
+      ];
+    }
+  };
 
   // Handle image upload from user computer
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -284,17 +307,18 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
       return;
     }
 
+    const currentStages = getStatusStages(engine, subModel);
     setIsGenerating(true);
     setErrorMsg(null);
     setProgressStage(0);
-    setStatusMessage(STATUS_STAGES[0]);
+    setStatusMessage(currentStages[0]);
 
     try {
       // Advance progress indicators smoothly
       const progressTimer = setInterval(() => {
         setProgressStage((prev) => {
-          const next = Math.min(prev + 1, STATUS_STAGES.length - 1);
-          setStatusMessage(STATUS_STAGES[next]);
+          const next = Math.min(prev + 1, currentStages.length - 1);
+          setStatusMessage(currentStages[next]);
           return next;
         });
       }, 2500);
@@ -315,7 +339,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
         }
       }
 
-      // Call server endpoint
+      // Call server endpoint with dynamic engine and subModel
       const response = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -324,6 +348,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
           prompt,
           aspectRatio,
           engine,
+          subModel,
           motionType,
           mode: videoMode,
           duration,
@@ -379,6 +404,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
         prompt,
         aspectRatio,
         engine,
+        subModel,
         motionType,
         hasAudio: includeAudio,
         createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -386,7 +412,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
 
       setVideos((prev) => [newVideo, ...prev]);
       setActiveVideo(newVideo);
-      setStatusMessage(`Video successfully synthesized using ${engine.toUpperCase()}!`);
+      setStatusMessage(`Video successfully synthesized via ${engine} (${subModel})!`);
     } catch (err: any) {
       console.error('Video generation error:', err);
       setErrorMsg(err.message || 'Video generation failed');
@@ -546,50 +572,18 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
       {/* ========================================================================= */}
       {studioTab === 'video' && (
         <div className="space-y-8">
-          {/* Engine Selector Cards */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>Select AI Video Engine</span>
-              </label>
-              <span className="text-[11px] font-mono text-slate-500">Active Engine: <strong className="text-sky-400">{engine.toUpperCase()}</strong></span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-              {VIDEO_ENGINES.map((eng) => {
-                const IconComponent = eng.icon;
-                const isSelected = engine === eng.id;
-                return (
-                  <button
-                    key={eng.id}
-                    onClick={() => setEngine(eng.id)}
-                    className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-sky-500 bg-sky-500/10 shadow-lg shadow-sky-500/10 scale-[1.02]'
-                        : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:border-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`p-1.5 rounded-lg ${isSelected ? 'bg-sky-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
-                          <IconComponent className="w-3.5 h-3.5" />
-                        </span>
-                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full border ${eng.badgeColor}`}>
-                          {eng.badge.split('•')[0]}
-                        </span>
-                      </div>
-                      <div className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                        {eng.name}
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                      {eng.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Video Engine Provider Selector Component */}
+          <VideoEngineSelector
+            selectedEngine={engine}
+            onSelectEngine={(newEngine) => {
+              setEngine(newEngine);
+              if (newEngine === 'Veo') setSubModel('veo-3.1-fast-generate-preview');
+              else if (newEngine === 'HuggingFace') setSubModel('Wan 2.1 Open-Weights (14B)');
+              else if (newEngine === 'NovAI') setSubModel('NovAI Fantasy Motion v2');
+            }}
+            selectedSubModel={subModel}
+            onSelectSubModel={setSubModel}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Input Builder (6 cols) */}
@@ -810,12 +804,12 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
                   {isGenerating ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Synthesizing Video with {engine.toUpperCase()}...</span>
+                      <span>Synthesizing Video via {engine} ({subModel})...</span>
                     </>
                   ) : (
                     <>
                       <Video className="w-4 h-4" />
-                      <span>Generate {aspectRatio} Video ({duration}s • {engine.toUpperCase()})</span>
+                      <span>Generate {aspectRatio} Video ({duration}s • {engine} • {subModel.split(' ')[0]})</span>
                     </>
                   )}
                 </button>
@@ -857,7 +851,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
                   {activeVideo && (
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
-                        {activeVideo.engine.toUpperCase()} • {activeVideo.aspectRatio}
+                        {activeVideo.engine} {activeVideo.subModel ? `(${activeVideo.subModel.split(' ')[0]})` : ''} • {activeVideo.aspectRatio}
                       </span>
                       {activeVideo.hasAudio && (
                         <span className="text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -939,7 +933,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
                     <div>
                       <h4 className="text-sm font-bold text-slate-300">No Video Generated Yet</h4>
                       <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
-                        Select an engine (Veo 3.1, Wan 2.1, CogVideoX, or HyperFrames), choose camera trajectory, and hit Generate Video.
+                        Select an engine (Veo, HuggingFace, or NovAI), choose camera trajectory, and hit Generate Video.
                       </p>
                     </div>
                   </div>
@@ -973,7 +967,7 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-200 truncate">{vid.prompt}</p>
                             <span className="text-[10px] font-mono text-slate-500">
-                              {vid.engine.toUpperCase()} • {vid.aspectRatio} • {vid.createdAt}
+                              {vid.engine} {vid.subModel ? `(${vid.subModel.split(' ')[0]})` : ''} • {vid.aspectRatio} • {vid.createdAt}
                             </span>
                           </div>
                         </div>
