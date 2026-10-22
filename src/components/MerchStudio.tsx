@@ -1,12 +1,13 @@
 import React from 'react';
 import { PublishingProject } from '../types/storyforge';
-import { Shirt, Coffee, FileSpreadsheet, Sparkles, Download, Check } from 'lucide-react';
+import { Shirt, Coffee, FileSpreadsheet, Sparkles, Download, Check, Video, ArrowRight } from 'lucide-react';
 
 interface MerchStudioProps {
   project: PublishingProject;
+  onNavigateToBossLister?: () => void;
 }
 
-export const MerchStudio: React.FC<MerchStudioProps> = ({ project }) => {
+export const MerchStudio: React.FC<MerchStudioProps> = ({ project, onNavigateToBossLister }) => {
   const merch = project.merchPack;
 
   return (
@@ -14,7 +15,7 @@ export const MerchStudio: React.FC<MerchStudioProps> = ({ project }) => {
       
       {/* Top Banner */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -29,6 +30,17 @@ export const MerchStudio: React.FC<MerchStudioProps> = ({ project }) => {
               Generates POD T-shirt graphic prompts, color-changing mug designs, coloring pages, mazes, and printable teacher guides.
             </p>
           </div>
+
+          {onNavigateToBossLister && (
+            <button
+              onClick={onNavigateToBossLister}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 transition-all shadow-md shadow-amber-500/20 active:scale-95"
+            >
+              <Video className="w-4 h-4" />
+              <span>Launch Commercial Generator</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

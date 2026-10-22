@@ -2,7 +2,7 @@ import React from 'react';
 import { PublishingProject } from '../types/storyforge';
 import { 
   BookOpen, Plus, Download, Sparkles, Cpu, Search, 
-  Layers, CheckCircle, ShieldCheck, ChevronDown, Sliders, Info, FileArchive, Video
+  Layers, CheckCircle, ShieldCheck, ChevronDown, Sliders, Info, FileArchive, Video, Key
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -13,6 +13,7 @@ interface NavbarProps {
   onOpenBookFromVideo: () => void;
   onExportPackage: () => void;
   onOpenSystemStatus: () => void;
+  onOpenApiKeyConfig?: () => void;
   mode: 'beginner' | 'professional';
   onToggleMode: (mode: 'beginner' | 'professional') => void;
   activeTab: string;
@@ -29,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBookFromVideo,
   onExportPackage,
   onOpenSystemStatus,
+  onOpenApiKeyConfig,
   mode,
   onToggleMode,
   activeTab,
@@ -124,6 +126,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </button>
 
+            {/* API Keys Configuration Trigger */}
+            <button
+              onClick={onOpenApiKeyConfig ? onOpenApiKeyConfig : () => onChangeTab('apikeys')}
+              className={`text-xs font-medium px-2.5 py-2 rounded-lg border flex items-center gap-1.5 transition-all ${
+                activeTab === 'apikeys'
+                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200 shadow-sm'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border-slate-800'
+              }`}
+              title="Securely input & store NVIDIA, Anthropic, OpenAI & Groq API Keys"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xl:inline">API Keys</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                NVIDIA/Groq
+              </span>
+            </button>
+
             {/* Mode Switcher */}
             <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
               <button
@@ -202,10 +221,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             { id: 'veo-studio', label: '🎥 AI Video & Image Studio', badge: '5 Free Engines', isNew: true },
             { id: 'gemini-chat', label: '💬 Gemini Multi-Turn Chat', badge: 'Argon/Flash', isNew: true },
             { id: 'connectors', label: '🔌 AI Connectors (No API)', badge: 'Claude/GPT', isNew: true },
+            { id: 'apikeys', label: '🔑 Multi-Provider Keys', badge: 'NVIDIA/Groq', isNew: true },
             { id: 'council', label: '2. Grand Council', badge: '9 Experts' },
             { id: 'bookmachine', label: '🖋️ Patterson Book Machine', badge: 'Formula V1', isNew: true },
             { id: 'manuscript', label: '3. Book & Chapters', badge: `${activeProject?.manuscript?.chapters?.length || 0} Ch.` },
             { id: 'cartoons', label: '🎬 AI Cartoon Videos', badge: `${activeProject?.cartoonEpisodes?.length || 0} Toons`, isNew: true },
+            { id: 'bosslister', label: '🛍️ BossLister Commercials', badge: 'Auto-Ads & Cutout', isNew: true },
             { id: 'characters', label: '4. Character & Lore Lab', badge: `${activeProject?.characters?.length || 0} Chars` },
             { id: 'illustration', label: '5. Illustration Studio', badge: 'Art Guides' },
             { id: 'publishing', label: '6. KDP & Publishing', badge: 'ISBN/EPUB' },

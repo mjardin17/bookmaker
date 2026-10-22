@@ -4,7 +4,7 @@ import {
   Book, ShoppingCart, DollarSign, Barcode, Tag, 
   Download, CheckCircle2, Shield, Layers, Eye, 
   ExternalLink, Sparkles, AlertTriangle, Printer, 
-  Smartphone, Share2, Globe, Cpu, Video, Play, FileText, Check, Wand2, RefreshCw, Film, ArrowRight
+  Smartphone, Share2, Globe, Cpu, Video, Play, FileText, Check, Wand2, RefreshCw, Film, ArrowRight, Search
 } from 'lucide-react';
 
 interface PublishingStudioProps {
@@ -19,13 +19,20 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
   onDownloadFormats
 }) => {
   const meta = project.publishingMetadata;
-  const [activeSubTab, setActiveSubTab] = useState<'kdp_metadata' | 'cover_engine' | 'platform_registry' | 'chapter_videos'>('cover_engine');
+  const [activeSubTab, setActiveSubTab] = useState<'kdp_metadata' | 'cover_engine' | 'platform_registry' | 'chapter_videos' | 'search_grounding'>('cover_engine');
   const [pageCount, setPageCount] = useState<number>(project.manuscript?.chapters?.length ? project.manuscript.chapters.length * 12 : 124);
   const [paperType, setPaperType] = useState<'cream' | 'white'>('cream');
   const [trimSize, setTrimSize] = useState<'5x8' | '6x9' | '8.5x8.5' | '8.5x11'>(meta.printFormat?.trimSize || '5x8');
   const [selectedVariant, setSelectedVariant] = useState<string>('print_wrap');
   const [platformFilter, setPlatformFilter] = useState<'all' | 'direct_api' | 'approved_partner' | 'draft_export'>('all');
   const [bundleExportMsg, setBundleExportMsg] = useState<string | null>(null);
+
+  // Google Search Grounding Market Intelligence State (gemini-3.8-flash + googleSearch)
+  const [searchGroundingQuery, setSearchGroundingQuery] = useState<string>(
+    "Current Amazon KDP Best Sellers in Children's Greek & Roman Myth Fiction"
+  );
+  const [isSearchingGrounding, setIsSearchingGrounding] = useState<boolean>(false);
+  const [groundingReport, setGroundingReport] = useState<any | null>(null);
 
   // Chapter Video Bridge & 3-Tier AI Video Engine State
   const [selectedVideoChapterId, setSelectedVideoChapterId] = useState<string>(
@@ -227,6 +234,30 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
     }, 1200);
   };
 
+  const handleRunSearchGrounding = async (customQuery?: string) => {
+    const q = customQuery || searchGroundingQuery;
+    if (!q.trim()) return;
+    setIsSearchingGrounding(true);
+    try {
+      const res = await fetch('/api/gemini/search-grounding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: q,
+          topic: 'market_comps',
+          bookTitle: project.name || 'Little Zeus Gets His Thunderbolt'
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setGroundingReport(data);
+    } catch (err: any) {
+      console.warn('Search grounding fetch error:', err);
+    } finally {
+      setIsSearchingGrounding(false);
+    }
+  };
+
   const handleMakeChapterVideo = async () => {
     const targetChapter = project.manuscript?.chapters?.find(c => c.id === selectedVideoChapterId) || project.manuscript?.chapters?.[0];
     if (!targetChapter) return;
@@ -399,6 +430,23 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
           >
             <Tag className="w-3.5 h-3.5" />
             <span>KDP Metadata & 7 Keywords</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubTab('search_grounding');
+              if (!groundingReport) {
+                handleRunSearchGrounding();
+              }
+            }}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              activeSubTab === 'search_grounding'
+                ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20'
+                : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-sky-400" />
+            <span>🌐 Google Search Market Intelligence</span>
           </button>
         </div>
       </div>
@@ -1220,6 +1268,146 @@ export const PublishingStudio: React.FC<PublishingStudioProps> = ({
 
           </div>
 
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBTAB 5: GOOGLE SEARCH MARKET INTELLIGENCE (gemini-3.8-flash + googleSearch) */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'search_grounding' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-xl">
+                  <Globe className="w-6 h-6" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Google Search Market Intelligence</span>
+                    <span className="text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-bold">
+                      gemini-3.8-flash + googleSearch
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Live market grounding against current Amazon KDP bestsellers, category competition, and reader demographics.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <Search className="w-3.5 h-3.5 text-sky-400" />
+                <span>Real-Time Web Grounding</span>
+              </div>
+            </div>
+
+            {/* Presets */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                Quick Market Intelligence Presets:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Current Amazon KDP Best Sellers in Children's Greek & Roman Myth Fiction",
+                  "Middle Grade Fantasy Series Comps & Reader Age Benchmarks",
+                  "Top Converting Amazon KDP Keywords for Mythology Adventures",
+                  "Pricing Benchmarks for Self-Published Illustrated Chapter Books"
+                ].map((preset, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setSearchGroundingQuery(preset);
+                      handleRunSearchGrounding(preset);
+                    }}
+                    className="bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-sky-500/50 text-xs px-3 py-1.5 rounded-lg transition-all text-left"
+                  >
+                    🔍 {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Query Form */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <input
+                type="text"
+                value={searchGroundingQuery}
+                onChange={(e) => setSearchGroundingQuery(e.target.value)}
+                placeholder="Enter custom market query (e.g., current trending tropes in middle grade adventure)..."
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              />
+              <button
+                onClick={() => handleRunSearchGrounding()}
+                disabled={isSearchingGrounding || !searchGroundingQuery.trim()}
+                className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 disabled:opacity-40 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                {isSearchingGrounding ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Searching Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Execute Grounded Search</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Grounding Report View */}
+            {groundingReport && (
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                {/* Search Queries Executed */}
+                {groundingReport.searchQueries && groundingReport.searchQueries.length > 0 && (
+                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Search className="w-3 h-3 text-sky-400" />
+                      <span>Google Search Queries Executed by gemini-3.8-flash:</span>
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {groundingReport.searchQueries.map((q: string, i: number) => (
+                        <span key={i} className="text-[11px] font-mono bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded text-sky-300">
+                          {q}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grounding Sources */}
+                {groundingReport.sources && groundingReport.sources.length > 0 && (
+                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <ExternalLink className="w-3 h-3 text-emerald-400" />
+                      <span>Verified Citations & Live Sources:</span>
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {groundingReport.sources.map((s: any, i: number) => (
+                        <a
+                          key={i}
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-medium bg-slate-900 hover:bg-slate-800 border border-sky-500/30 hover:border-sky-400 px-2.5 py-1 rounded-lg text-sky-300 flex items-center gap-1 transition-colors"
+                        >
+                          <Globe className="w-3 h-3 text-sky-400 shrink-0" />
+                          <span className="truncate max-w-xs">{s.title || s.url}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Report Content */}
+                <div className="p-5 bg-slate-950/90 border border-slate-800 rounded-xl">
+                  <div className="prose prose-invert max-w-none text-xs leading-relaxed whitespace-pre-wrap font-sans text-slate-200">
+                    {groundingReport.text}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

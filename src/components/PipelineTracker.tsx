@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PublishingProject, StoryForge2StageStatus, ProjectMilestone } from '../types/storyforge';
+import { ProjectTimelineGantt, formatDisplayDate, formatIsoDate } from './ProjectTimelineGantt';
 import { 
   CheckCircle2, Clock, PlayCircle, ArrowRight, Sparkles, 
   Layers, ShieldAlert, Cpu, BarChart3, Rocket, RefreshCw, 
@@ -11,6 +12,7 @@ interface PipelineTrackerProps {
   project: PublishingProject;
   onAdvanceStep: (stepNumber: number) => void;
   onRunStageAudit: (stageName: string) => void;
+  onUpdateMilestones?: (milestones: ProjectMilestone[]) => void;
 }
 
 export const PIPELINE_STAGES = [
@@ -64,7 +66,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [1, 2, 3, 4, 5],
     sf2Stages: ['BRIEF_INGEST'],
     targetDaysFromStart: 3,
+    startDate: '2026-10-15',
     targetDeadline: '2026-10-18',
+    durationDays: 3,
+    owner: 'Grand Council AI',
     status: 'COMPLETED',
     progressPercent: 100,
     criticalPath: true,
@@ -83,7 +88,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [6],
     sf2Stages: ['BRIEF_INGEST'],
     targetDaysFromStart: 7,
+    startDate: '2026-10-18',
     targetDeadline: '2026-10-22',
+    durationDays: 4,
+    owner: 'Patterson Formula Architect',
     status: 'COMPLETED',
     progressPercent: 100,
     criticalPath: true,
@@ -103,7 +111,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [7, 8, 9],
     sf2Stages: ['MANUSCRIPT_GENERATE', 'MANUSCRIPT_VALIDATE'],
     targetDaysFromStart: 15,
+    startDate: '2026-10-21',
     targetDeadline: '2026-10-30',
+    durationDays: 9,
+    owner: 'Chapter Engine & Zero-Fluff QA',
     status: 'IN_PROGRESS',
     progressPercent: 78,
     criticalPath: true,
@@ -124,7 +135,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [10, 11, 12],
     sf2Stages: ['LAYOUT_PLAN', 'ILLUSTRATIONS_GENERATE', 'COVER_CALCULATE', 'COVER_RENDER'],
     targetDaysFromStart: 21,
+    startDate: '2026-10-29',
     targetDeadline: '2026-11-05',
+    durationDays: 7,
+    owner: 'Art DNA & KDP Math Engine',
     status: 'UPCOMING',
     progressPercent: 25,
     criticalPath: false,
@@ -145,7 +159,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [13, 14, 15, 16, 17, 18],
     sf2Stages: ['EPUB_COMPILE', 'EPUB_VALIDATE', 'PDF_COMPILE', 'PDF_VALIDATE', 'HUMAN_APPROVAL_GATE'],
     targetDaysFromStart: 26,
+    startDate: '2026-11-05',
     targetDeadline: '2026-11-10',
+    durationDays: 5,
+    owner: 'EPUB3 & PDF/X-1a Compiler',
     status: 'UPCOMING',
     progressPercent: 0,
     criticalPath: true,
@@ -166,7 +183,10 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
     stages: [19, 20],
     sf2Stages: ['MARKETING_PACKAGE', 'VIDEO_COMMERCIAL_GENERATE', 'DISTRIBUTION_DISPATCH'],
     targetDaysFromStart: 30,
+    startDate: '2026-11-10',
     targetDeadline: '2026-11-14',
+    durationDays: 4,
+    owner: 'Omnichannel Launch Machine',
     status: 'UPCOMING',
     progressPercent: 0,
     criticalPath: false,
@@ -182,14 +202,25 @@ export const INITIAL_MILESTONES: ProjectMilestone[] = [
 export const PipelineTracker: React.FC<PipelineTrackerProps> = ({
   project,
   onAdvanceStep,
-  onRunStageAudit
+  onRunStageAudit,
+  onUpdateMilestones
 }) => {
   const currentStep = project.currentStep || 7;
   const [pipelineMode, setPipelineMode] = useState<'sf2_ledger' | 'publishing_20' | 'timeline'>('timeline');
   const [sf2Stages, setSf2Stages] = useState<StoryForge2StageStatus[]>(STORYFORGE2_15_STAGES);
-  const [milestones, setMilestones] = useState<ProjectMilestone[]>(INITIAL_MILESTONES);
+  const [milestones, setMilestones] = useState<ProjectMilestone[]>(() => {
+    return (project.milestones && project.milestones.length > 0)
+      ? project.milestones
+      : INITIAL_MILESTONES;
+  });
   const [approvalGranted, setApprovalGranted] = useState(false);
   const [auditNotice, setAuditNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (project.milestones && project.milestones.length > 0) {
+      setMilestones(project.milestones);
+    }
+  }, [project.milestones]);
 
   const handleApproveGate = () => {
     setApprovalGranted(true);
@@ -202,21 +233,214 @@ export const PipelineTracker: React.FC<PipelineTrackerProps> = ({
   };
 
   const handleToggleDeliverable = (milestoneId: string, deliverableId: string) => {
-    setMilestones(prev => prev.map(m => {
-      if (m.id !== milestoneId) return m;
-      const updatedDeliverables = m.deliverables.map(d => 
-        d.id === deliverableId ? { ...d, completed: !d.completed } : d
-      );
-      const completedCount = updatedDeliverables.filter(d => d.completed).length;
-      const progressPercent = Math.round((completedCount / updatedDeliverables.length) * 100);
-      const status = progressPercent === 100 ? 'COMPLETED' : progressPercent > 0 ? 'IN_PROGRESS' : 'UPCOMING';
-      return {
-        ...m,
-        deliverables: updatedDeliverables,
-        progressPercent,
-        status: status as any
-      };
+    setMilestones(prev => {
+      const updated = prev.map(m => {
+        if (m.id !== milestoneId) return m;
+        const updatedDeliverables = m.deliverables.map(d => 
+          d.id === deliverableId ? { ...d, completed: !d.completed } : d
+        );
+        const completedCount = updatedDeliverables.filter(d => d.completed).length;
+        const progressPercent = Math.round((completedCount / updatedDeliverables.length) * 100);
+        const status = progressPercent === 100 ? 'COMPLETED' : progressPercent > 0 ? 'IN_PROGRESS' : 'UPCOMING';
+        return {
+          ...m,
+          deliverables: updatedDeliverables,
+          progressPercent,
+          status: status as any
+        };
+      });
+      onUpdateMilestones?.(updated);
+      return updated;
+    });
+  };
+
+  const handleUpdateDependency = (milestoneId: string, dependsOnId: string | undefined) => {
+    setMilestones(prev => {
+      const updated = prev.map(m => {
+        if (m.id === milestoneId) {
+          return {
+            ...m,
+            dependsOnMilestoneId: dependsOnId
+          };
+        }
+        return m;
+      });
+      onUpdateMilestones?.(updated);
+      return updated;
+    });
+    const target = milestones.find(m => m.id === milestoneId);
+    const pred = milestones.find(m => m.id === dependsOnId);
+    if (dependsOnId && pred) {
+      setAuditNotice(`Dependency Linked: Phase ${target?.phaseNumber || ''} now depends on Phase ${pred.phaseNumber} (${pred.title}).`);
+    } else {
+      setAuditNotice(`Dependency Unlinked: Phase ${target?.phaseNumber || ''} is now independent.`);
+    }
+  };
+
+  // Drag-and-drop schedule shift & cascade updates
+  const handleUpdateMilestoneSchedule = (
+    milestoneId: string,
+    newStartDay: number,
+    newDurationDays: number,
+    cascadeDependents = true
+  ) => {
+    setMilestones(prev => {
+      const map = new Map<string, ProjectMilestone>(prev.map(m => [m.id, { ...m }]));
+      const target = map.get(milestoneId);
+      if (!target) return prev;
+
+      target.startDay = newStartDay;
+      target.durationDays = newDurationDays;
+      target.startDate = formatIsoDate(newStartDay);
+      target.targetDeadline = formatIsoDate(newStartDay + newDurationDays);
+      target.targetDaysFromStart = Math.round(newStartDay + newDurationDays);
+
+      if (cascadeDependents) {
+        const queue: string[] = [milestoneId];
+        const visited = new Set<string>();
+
+        while (queue.length > 0) {
+          const currId = queue.shift()!;
+          visited.add(currId);
+          const curr = map.get(currId);
+          if (!curr) continue;
+
+          const currFinish = (curr.startDay ?? 0) + (curr.durationDays ?? 4);
+
+          for (const m of map.values()) {
+            if (m.dependsOnMilestoneId === currId) {
+              const succStart = m.startDay ?? (m.phaseNumber * 4);
+              const succDuration = m.durationDays ?? 4;
+              if (succStart < currFinish) {
+                const shiftDelta = currFinish - succStart;
+                const newSuccStart = Math.min(30 - succDuration, succStart + shiftDelta);
+                m.startDay = newSuccStart;
+                m.startDate = formatIsoDate(newSuccStart);
+                m.targetDeadline = formatIsoDate(newSuccStart + succDuration);
+                m.targetDaysFromStart = Math.round(newSuccStart + succDuration);
+
+                if (!visited.has(m.id)) {
+                  queue.push(m.id);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const updated = Array.from(map.values());
+      onUpdateMilestones?.(updated);
+      return updated;
+    });
+
+    const m = milestones.find(item => item.id === milestoneId);
+    const startStr = formatDisplayDate(newStartDay);
+    const endStr = formatDisplayDate(newStartDay + newDurationDays);
+    setAuditNotice(
+      `Milestone Schedule Updated: Phase ${m?.phaseNumber || ''} (${m?.title}) shifted to ${startStr} – ${endStr} (${newDurationDays}d). ${cascadeDependents ? 'Dependent deadlines dynamically cascaded.' : ''}`
+    );
+  };
+
+  // Card view drag-and-drop reordering
+  const handleReorderMilestones = (reordered: ProjectMilestone[]) => {
+    const updated = reordered.map((m, idx) => ({
+      ...m,
+      phaseNumber: idx + 1
     }));
+    setMilestones(updated);
+    onUpdateMilestones?.(updated);
+    setAuditNotice(`Milestones reordered: ${updated.map(m => `P${m.phaseNumber}`).join(' ➔ ')}`);
+  };
+
+  // Direct schedule file import (Drag-and-drop onto dropzone or browse)
+  const handleImportScheduleFiles = async (file: File) => {
+    try {
+      const text = await file.text();
+      const fileName = file.name.toLowerCase();
+
+      if (fileName.endsWith('.json')) {
+        const parsed = JSON.parse(text);
+        const importedList: any[] = Array.isArray(parsed) 
+          ? parsed 
+          : parsed.milestones && Array.isArray(parsed.milestones)
+          ? parsed.milestones
+          : null;
+
+        if (importedList && importedList.length > 0) {
+          const merged: ProjectMilestone[] = importedList.map((item, idx) => ({
+            id: item.id || `m_${idx + 1}`,
+            phaseNumber: item.phaseNumber ?? (idx + 1),
+            title: item.title || `Phase ${idx + 1}`,
+            subtitle: item.subtitle || 'Imported milestone stage',
+            category: item.category || 'Architecture',
+            stages: item.stages || [idx + 1],
+            sf2Stages: item.sf2Stages || ['BRIEF_INGEST'],
+            targetDaysFromStart: item.targetDaysFromStart || (idx + 1) * 5,
+            startDate: item.startDate || formatIsoDate(idx * 4),
+            targetDeadline: item.targetDeadline || formatIsoDate((idx + 1) * 4),
+            startDay: typeof item.startDay === 'number' ? item.startDay : idx * 4,
+            durationDays: typeof item.durationDays === 'number' ? item.durationDays : 4,
+            owner: item.owner || 'AI Production Engine',
+            status: item.status || 'UPCOMING',
+            progressPercent: item.progressPercent ?? 0,
+            criticalPath: Boolean(item.criticalPath),
+            deliverables: item.deliverables || [
+              { id: `d_${idx}_1`, label: 'Deliverable complete and verified', completed: false, requiredForNext: true }
+            ],
+            dependsOnMilestoneId: item.dependsOnMilestoneId
+          }));
+
+          setMilestones(merged);
+          onUpdateMilestones?.(merged);
+          setAuditNotice(`Successfully imported ${merged.length} milestones from "${file.name}"!`);
+          return;
+        }
+      } else if (fileName.endsWith('.csv') || fileName.endsWith('.tsv')) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length > 1) {
+          const dataRows = lines.slice(1);
+          const parsedMilestones: ProjectMilestone[] = dataRows.map((row, idx) => {
+            const cols = row.split(fileName.endsWith('.tsv') ? '\t' : ',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+            const title = cols[0] || `Phase ${idx + 1}`;
+            const duration = parseFloat(cols[1]) || 4;
+            const startDay = parseFloat(cols[2]) || idx * 4;
+            const owner = cols[3] || 'Publishing AI';
+            const status = (cols[4] as any) || 'UPCOMING';
+
+            return {
+              id: `m_csv_${idx + 1}`,
+              phaseNumber: idx + 1,
+              title,
+              subtitle: `Imported via CSV: ${file.name}`,
+              category: 'Foundation',
+              stages: [idx + 1],
+              sf2Stages: ['BRIEF_INGEST'],
+              targetDaysFromStart: Math.round(startDay + duration),
+              startDate: formatIsoDate(startDay),
+              targetDeadline: formatIsoDate(startDay + duration),
+              startDay,
+              durationDays: duration,
+              owner,
+              status: ['COMPLETED', 'IN_PROGRESS', 'UPCOMING'].includes(status) ? status : 'UPCOMING',
+              progressPercent: status === 'COMPLETED' ? 100 : status === 'IN_PROGRESS' ? 50 : 0,
+              criticalPath: idx % 2 === 0,
+              deliverables: [
+                { id: `d_csv_${idx}_1`, label: `Execute ${title}`, completed: status === 'COMPLETED', requiredForNext: true }
+              ]
+            };
+          });
+
+          setMilestones(parsedMilestones);
+          onUpdateMilestones?.(parsedMilestones);
+          setAuditNotice(`Imported ${parsedMilestones.length} milestones from CSV "${file.name}"!`);
+          return;
+        }
+      }
+
+      setAuditNotice(`File "${file.name}" processed: schedule updated.`);
+    } catch (err: any) {
+      setAuditNotice(`Error importing schedule file "${file.name}": ${err.message}`);
+    }
   };
 
   const completedSf2Count = sf2Stages.filter(s => s.status === 'COMPLETED').length;
@@ -270,7 +494,7 @@ export const PipelineTracker: React.FC<PipelineTrackerProps> = ({
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                Milestone Timeline
+                Project Timeline (Gantt)
               </button>
               <button
                 onClick={() => setPipelineMode('sf2_ledger')}
@@ -355,230 +579,20 @@ export const PipelineTracker: React.FC<PipelineTrackerProps> = ({
         </div>
       )}
 
-      {/* VIEW 1: MILESTONE TIMELINE & DEADLINES VIEW */}
+      {/* VIEW 1: PROJECT TIMELINE GANTT & DEADLINES VIEW */}
       {pipelineMode === 'timeline' && (
-        <div className="space-y-6">
-          
-          {/* Milestone Metrics Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-mono uppercase block">Completed</span>
-                <span className="text-base font-bold text-white">{completedMilestonesCount} / 6 Milestones</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-mono uppercase block">Active Phase</span>
-                <span className="text-base font-bold text-amber-300">Phase 3: Manuscript QA</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                <Target className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-mono uppercase block">Critical Path</span>
-                <span className="text-base font-bold text-slate-200">Zero-Fluff Cliffhanger Gate</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-mono uppercase block">Target Release</span>
-                <span className="text-base font-bold text-purple-200">Nov 14, 2026 (KDP / D2D)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Milestones Roadmap */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-amber-400" />
-                Project Milestone Roadmap & Scheduled Deadlines
-              </h3>
-              <span className="text-xs font-mono text-slate-400">
-                Click deliverables to toggle status • Automated stage sync
-              </span>
-            </div>
-
-            <div className="relative pl-6 sm:pl-8 space-y-6 before:content-[''] before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
-              {milestones.map((milestone) => {
-                const isCompleted = milestone.status === 'COMPLETED';
-                const isInProgress = milestone.status === 'IN_PROGRESS';
-                const isUpcoming = milestone.status === 'UPCOMING';
-
-                return (
-                  <div key={milestone.id} className="relative group">
-                    
-                    {/* Node Dot on Timeline Spine */}
-                    <div className={`absolute -left-6 sm:-left-8 top-4 w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
-                      isCompleted
-                        ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30'
-                        : isInProgress
-                        ? 'bg-amber-500 border-amber-300 text-slate-950 ring-4 ring-amber-500/20 shadow-md shadow-amber-500/40 animate-pulse'
-                        : 'bg-slate-900 border-slate-700 text-slate-500'
-                    }`}>
-                      {isCompleted ? (
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      ) : (
-                        <span className="text-[10px] font-bold font-mono">{milestone.phaseNumber}</span>
-                      )}
-                    </div>
-
-                    {/* Milestone Card */}
-                    <div className={`p-5 rounded-2xl border transition-all relative overflow-hidden ${
-                      isInProgress
-                        ? 'bg-gradient-to-b from-slate-900 via-indigo-950/40 to-slate-900 border-indigo-500/60 shadow-xl ring-1 ring-indigo-500/30'
-                        : isCompleted
-                        ? 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
-                        : 'bg-slate-950/50 border-slate-900/80 text-slate-500 hover:border-slate-800'
-                    }`}>
-                      
-                      {/* Top Row: Phase Number, Category, Status, Deadline */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                            isInProgress
-                              ? 'bg-amber-500 text-slate-950'
-                              : isCompleted
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}>
-                            Phase {milestone.phaseNumber}: {milestone.category}
-                          </span>
-
-                          {milestone.criticalPath && (
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1 font-semibold">
-                              <Flag className="w-3 h-3" /> Critical Path
-                            </span>
-                          )}
-
-                          <span className="text-xs text-slate-400 font-mono">
-                            Stages: {milestone.stages.join(', ')}
-                          </span>
-                        </div>
-
-                        {/* Deadline Date Chip */}
-                        <div className="flex items-center gap-2 font-mono text-xs">
-                          <span className="text-slate-400 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                            Target Deadline:
-                          </span>
-                          <span className={`font-semibold px-2 py-0.5 rounded ${
-                            isCompleted
-                              ? 'text-emerald-400 bg-emerald-500/10'
-                              : isInProgress
-                              ? 'text-amber-300 bg-amber-500/10 border border-amber-500/30'
-                              : 'text-slate-400 bg-slate-900'
-                          }`}>
-                            {milestone.targetDeadline}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Title & Subtitle */}
-                      <h4 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                        {milestone.title}
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                        {milestone.subtitle}
-                      </p>
-
-                      {/* Milestone Progress Bar */}
-                      <div className="mt-4 mb-4">
-                        <div className="flex items-center justify-between text-[11px] font-mono mb-1">
-                          <span className="text-slate-400">Milestone Deliverables Progress:</span>
-                          <span className={isInProgress ? 'text-amber-300 font-bold' : isCompleted ? 'text-emerald-400' : 'text-slate-500'}>
-                            {milestone.progressPercent}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                          <div 
-                            className={`h-full transition-all duration-300 ${
-                              isCompleted 
-                                ? 'bg-emerald-400' 
-                                : isInProgress 
-                                ? 'bg-gradient-to-r from-amber-500 to-indigo-500' 
-                                : 'bg-slate-700'
-                            }`}
-                            style={{ width: `${milestone.progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Deliverables Checklist */}
-                      <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1.5">
-                          Required Milestones & Deliverables:
-                        </span>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {milestone.deliverables.map((deliv) => (
-                            <button
-                              key={deliv.id}
-                              onClick={() => handleToggleDeliverable(milestone.id, deliv.id)}
-                              className={`p-2 rounded-xl text-left flex items-start gap-2.5 transition-all text-xs border ${
-                                deliv.completed
-                                  ? 'bg-slate-950/70 border-emerald-500/30 text-slate-200'
-                                  : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                              }`}
-                            >
-                              <div className={`w-4 h-4 rounded mt-0.5 shrink-0 flex items-center justify-center border transition-all ${
-                                deliv.completed 
-                                  ? 'bg-emerald-500 border-emerald-400 text-slate-950' 
-                                  : 'border-slate-700 bg-slate-900'
-                              }`}>
-                                {deliv.completed && <Check className="w-3 h-3 stroke-[3]" />}
-                              </div>
-                              <span className={`text-[11px] leading-snug ${deliv.completed ? 'line-through text-slate-400' : ''}`}>
-                                {deliv.label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Bottom Footer Actions */}
-                      <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs flex-wrap gap-2">
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          {milestone.dependsOnMilestoneId ? `Depends on Phase ${milestone.phaseNumber - 1}` : 'Initial Milestone'}
-                        </span>
-
-                        <div className="flex items-center gap-2">
-                          {isInProgress && (
-                            <button
-                              onClick={() => onAdvanceStep(milestone.stages[milestone.stages.length - 1] + 1)}
-                              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all active:scale-95"
-                            >
-                              Advance to Next Phase
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
+        <ProjectTimelineGantt
+          milestones={milestones}
+          project={project}
+          sf2Stages={sf2Stages}
+          onToggleDeliverable={handleToggleDeliverable}
+          onAdvanceMilestone={onAdvanceStep}
+          onRunAudit={(milestoneTitle) => onRunStageAudit(milestoneTitle)}
+          onUpdateDependency={handleUpdateDependency}
+          onUpdateMilestoneSchedule={handleUpdateMilestoneSchedule}
+          onReorderMilestones={handleReorderMilestones}
+          onImportScheduleFiles={handleImportScheduleFiles}
+        />
       )}
 
       {/* VIEW 2: STORYFORGE 2 15-STAGE STATE LEDGER VIEW */}

@@ -14,7 +14,7 @@ import {
   Info
 } from 'lucide-react';
 
-export type VideoEngineProvider = 'Veo' | 'HuggingFace' | 'NovAI';
+export type VideoEngineProvider = 'Veo' | 'HuggingFace' | 'NovAI' | 'NVIDIA';
 
 export interface VideoEngineDetails {
   id: VideoEngineProvider;
@@ -49,6 +49,22 @@ export const VIDEO_ENGINE_PROVIDERS: VideoEngineDetails[] = [
     availableModels: ['veo-3.1-fast-generate-preview', 'veo-3.1-lite-generate-preview'],
     accentColor: 'from-sky-500 to-indigo-600',
     activeGlow: 'border-sky-500 bg-sky-500/10 shadow-sky-500/20'
+  },
+  {
+    id: 'NVIDIA',
+    name: 'NVIDIA Cosmos 1.0',
+    tagline: 'Physical AI & World Foundation Video Diffusion',
+    badge: 'NVIDIA NIM • GPU Accelerated',
+    badgeColor: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    icon: Cpu,
+    description: "NVIDIA's state-of-the-art Cosmos World Foundation diffusion architecture (Cosmos-Diffusion-7B and Cosmos-Predict-14B) running on NVIDIA TensorRT & H100 cloud infrastructure for hyper-realistic physics, camera kinematics, and high dynamic range.",
+    strengths: ['Physical AI & real-world dynamics', 'TensorRT-optimized 2-second inference', 'Zero artifact optical flow & volumetric rendering'],
+    supportedResolutions: ['1080p Ultra (16:9)', '720p Reel (9:16)'],
+    latency: '1.5-3s (NVIDIA NIM)',
+    pricing: 'NVIDIA NIM API (Free Developer Tier)',
+    availableModels: ['nvidia/cosmos-diffusion-7b', 'nvidia/cosmos-predict-14b', 'nvidia/cosmos-nemotron-34b'],
+    accentColor: 'from-emerald-500 to-teal-600',
+    activeGlow: 'border-emerald-500 bg-emerald-500/10 shadow-emerald-500/20'
   },
   {
     id: 'HuggingFace',

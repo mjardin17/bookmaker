@@ -19,10 +19,20 @@ import {
   Sliders,
   Award,
   Layers,
-  ChevronDown
+  ChevronDown,
+  Globe,
+  Search,
+  ExternalLink,
+  CheckCircle2
 } from 'lucide-react';
 
 export type GeminiModel = 'gemini-4-argon' | 'gemini-3.8-flash' | 'gemini-3.1-flash-lite';
+
+export interface GroundingData {
+  webSearchQueries?: string[];
+  sources?: Array<{ title?: string; url?: string; snippet?: string }>;
+  isGrounded?: boolean;
+}
 
 export interface ChatMessage {
   id: string;
@@ -32,6 +42,7 @@ export interface ChatMessage {
   timestamp: string;
   specialistName?: string;
   specialistAvatar?: string;
+  grounding?: GroundingData;
 }
 
 export interface SpecialistPersona {
@@ -150,10 +161,12 @@ export const GeminiChatbotStudio: React.FC<GeminiChatbotStudioProps> = ({
 }) => {
   // Model state: defaults to gemini-3.8-flash, with 4-argon for complex and 3.1-flash-lite for fast
   const [selectedModel, setSelectedModel] = useState<GeminiModel>('gemini-3.8-flash');
+  const [useSearchGrounding, setUseSearchGrounding] = useState<boolean>(true);
   const [activePersona, setActivePersona] = useState<SpecialistPersona>(SPECIALIST_PERSONAS[0]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Target chapter for text insertion
   const chapters = project?.manuscript?.chapters || [];
@@ -279,14 +292,17 @@ Target Age: ${project?.targetAge || 'Middle Grade (8-12)'}
 Chapters in Project: ${chapters.length} chapters
 Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cliffhanger hook.`;
 
+      const effectiveModel = useSearchGrounding ? 'gemini-3.8-flash' : selectedModel;
+
       const response = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: chatPayload,
-          model: selectedModel,
+          model: effectiveModel,
           systemInstruction: enrichedSystemInstruction,
-          temperature: selectedModel === 'gemini-4-argon' ? 0.6 : 0.7
+          temperature: effectiveModel === 'gemini-4-argon' ? 0.6 : 0.7,
+          useSearch: useSearchGrounding
         })
       });
 
@@ -301,10 +317,11 @@ Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cl
         id: `model-${Date.now()}`,
         role: 'model',
         text: replyText,
-        modelUsed: data.modelUsed || selectedModel,
+        modelUsed: data.modelUsed || effectiveModel,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         specialistName: activePersona.name,
-        specialistAvatar: activePersona.avatar
+        specialistAvatar: activePersona.avatar,
+        grounding: data.grounding
       };
 
       setMessages((prev) => [...prev, modelMsg]);
@@ -368,6 +385,55 @@ Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cl
             <span>Clear History</span>
           </button>
         </div>
+      </div>
+
+      {/* Search Grounding Banner / Toggle */}
+      <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        useSearchGrounding
+          ? 'bg-gradient-to-r from-sky-950/70 via-indigo-950/40 to-slate-900 border-sky-500/40 shadow-lg shadow-sky-500/10'
+          : 'bg-slate-900/70 border-slate-800'
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className={`p-2.5 rounded-xl transition-all ${
+            useSearchGrounding ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-slate-800 text-slate-400'
+          }`}>
+            <Globe className="w-5 h-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xs text-white">Google Search Grounding</span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                useSearchGrounding
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 font-bold'
+                  : 'bg-slate-800 text-slate-500 border-slate-700'
+              }`}>
+                {useSearchGrounding ? 'Active • gemini-3.8-flash' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              {useSearchGrounding
+                ? 'Grounds responses in verified, real-time web citations using gemini-3.8-flash with googleSearch tool.'
+                : 'Enable to retrieve up-to-date Amazon KDP comps, reader trends, and verified scientific/historical facts.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            const next = !useSearchGrounding;
+            setUseSearchGrounding(next);
+            if (next) setSelectedModel('gemini-3.8-flash');
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            useSearchGrounding
+              ? 'bg-sky-500 text-slate-950 hover:bg-sky-400 shadow-md shadow-sky-500/20'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>{useSearchGrounding ? 'Search Grounding: ON' : 'Enable Search Grounding'}</span>
+        </button>
       </div>
 
       {/* Model Selection Bar (Triple Tier: Argon, Flash, Flash-Lite) */}
@@ -540,6 +606,63 @@ Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cl
                 {/* Message Body (with whitespace and markdown support) */}
                 <div className="whitespace-pre-wrap select-text">{msg.text}</div>
 
+                {/* Google Search Grounding Verification Box */}
+                {msg.grounding?.isGrounded && (
+                  <div className="mt-3 p-3 bg-sky-950/40 border border-sky-500/30 rounded-xl space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sky-300 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Google Search Grounded (gemini-3.8-flash)</span>
+                      </span>
+                      <span className="text-[10px] bg-sky-500/10 text-sky-300 border border-sky-500/20 px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        Verified Grounding
+                      </span>
+                    </div>
+
+                    {msg.grounding.webSearchQueries && msg.grounding.webSearchQueries.length > 0 && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                          Google Search Queries:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.grounding.webSearchQueries.map((q, qIdx) => (
+                            <span
+                              key={qIdx}
+                              className="px-2 py-0.5 bg-slate-900 border border-slate-700/80 rounded text-[10px] text-sky-200 flex items-center gap-1"
+                            >
+                              <Search className="w-2.5 h-2.5 text-sky-400" />
+                              <span>{q}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {msg.grounding.sources && msg.grounding.sources.length > 0 && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                          Verified Sources & Citations:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.grounding.sources.map((s, sIdx) => (
+                            <a
+                              key={sIdx}
+                              href={s.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-sky-500/30 hover:border-sky-400 text-sky-300 rounded text-[10px] flex items-center gap-1 transition-colors"
+                            >
+                              <ExternalLink className="w-2.5 h-2.5 text-sky-400" />
+                              <span className="truncate max-w-[200px]">{s.title || s.url}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Footer Actions on Model Messages */}
                 {msg.role === 'model' && (
                   <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-800/80 text-[11px]">
@@ -578,9 +701,11 @@ Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cl
                         <button
                           onClick={() => {
                             onApplyToChapter(targetChapterId, msg.text);
-                            alert(`Content sent to Chapter ${chapters.find(c => c.id === targetChapterId)?.chapterNumber || 1}!`);
+                            const chNum = chapters.find(c => c.id === targetChapterId)?.chapterNumber || 1;
+                            setToastMessage(`Content applied to Chapter ${chNum}!`);
+                            setTimeout(() => setToastMessage(null), 3000);
                           }}
-                          className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold flex items-center gap-1"
+                          className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-transform"
                         >
                           <span>Apply</span>
                           <ArrowRight className="w-2.5 h-2.5" />
@@ -624,20 +749,31 @@ Patterson Formula: 40-50% dialogue, fast 400-500 word chapters, ending with a cl
             Prompt Ideas:
           </span>
           {[
+            '🌐 2026 Middle-Grade Fantasy Bestsellers (Google Search)',
+            '🌐 Amazon KDP Greek & Roman Myth Comps & Pricing (Google Search)',
+            '🌐 Scientific Physics of Lightning & Thunder Shockwaves',
             activePersona.defaultPrompt,
             'Audit Chapter 1 cliffhanger pacing',
-            'Deep character internal conflict for Little Zeus',
             '5 high-concept book titles for this project'
           ].map((suggestion, idx) => (
             <button
               key={idx}
               onClick={() => setInputMessage(suggestion)}
-              className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] px-2.5 py-1 rounded-lg whitespace-nowrap truncate max-w-xs transition-colors"
+              className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[11px] px-2.5 py-1 rounded-lg whitespace-nowrap truncate max-w-xs transition-colors flex items-center gap-1"
             >
-              {suggestion}
+              {suggestion.startsWith('🌐') && <Globe className="w-2.5 h-2.5 text-sky-400 shrink-0" />}
+              <span className="truncate">{suggestion}</span>
             </button>
           ))}
         </div>
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="mx-4 mt-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
 
         {/* Message Input Bar */}
         <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800 bg-slate-950">

@@ -60,6 +60,7 @@ export const LyriaMusicStudio: React.FC<LyriaMusicStudioProps> = ({
   const [trackDuration, setTrackDuration] = useState<number>(30);
   const [volume, setVolume] = useState<number>(0.85);
   const [assignedChapter, setAssignedChapter] = useState<number>(1);
+  const [attachedSuccessMsg, setAttachedSuccessMsg] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -598,14 +599,21 @@ export const LyriaMusicStudio: React.FC<LyriaMusicStudioProps> = ({
                       <button
                         onClick={() => {
                           onAssignToChapter(assignedChapter, currentTrack.audioUrl, currentTrack.title);
-                          alert(`Soundtrack linked to Chapter ${assignedChapter} video package!`);
+                          setAttachedSuccessMsg(`Soundtrack attached to Chapter ${assignedChapter}!`);
+                          setTimeout(() => setAttachedSuccessMsg(null), 4000);
                         }}
-                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1"
+                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
                       >
                         <span>Attach</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
+                    {attachedSuccessMsg && (
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium pt-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{attachedSuccessMsg}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

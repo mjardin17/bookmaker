@@ -436,6 +436,7 @@ export interface PublishingProject {
   formulaOutline?: FormulaOutlineBeat[];
   storyforge2Ledger?: StoryForge2StageStatus[];
   coverSpec?: CoverSpecResult;
+  milestones?: ProjectMilestone[];
 }
 
 export type StoryForge2StageId =
@@ -515,7 +516,7 @@ export interface PattersonMechanicalValidation {
   complianceScore: number;
 }
 
-export type AISubscriptionProvider = 'gemini' | 'claude_subscription' | 'chatgpt_subscription' | 'ollama_local';
+export type AISubscriptionProvider = 'gemini' | 'claude_subscription' | 'chatgpt_subscription' | 'ollama_local' | 'nvidia';
 
 export interface AISubscriptionConfig {
   activeProvider: AISubscriptionProvider;
@@ -539,6 +540,15 @@ export interface AISubscriptionConfig {
     lastPingMs?: number;
     lastConnectedAt?: string;
   };
+  nvidia: {
+    connected: boolean;
+    apiKey?: string;
+    plan: 'NVIDIA Developer NIM' | 'NVIDIA Enterprise AI' | 'NVIDIA Cloud DGX' | 'Free Sandbox';
+    preferredModel: 'nvidia/llama-3.3-70b-instruct' | 'nvidia/nemotron-4-340b-instruct' | 'nvidia/mistral-nemo-12b-instruct' | 'nvidia/cosmos-nemotron-34b' | 'meta/llama-3.1-405b-instruct';
+    nimEndpoint: string;
+    lastPingMs?: number;
+    lastConnectedAt?: string;
+  };
   lastTestLog?: {
     provider: AISubscriptionProvider;
     success: boolean;
@@ -558,11 +568,97 @@ export interface ProjectMilestone {
   sf2Stages: StoryForge2StageId[];
   targetDaysFromStart: number;
   targetDeadline: string;
+  startDate?: string;
+  startDay?: number;
+  durationDays?: number;
+  owner?: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'UPCOMING' | 'AT_RISK' | 'BLOCKED';
   progressPercent: number;
   criticalPath: boolean;
   deliverables: { id: string; label: string; completed: boolean; requiredForNext: boolean }[];
   dependsOnMilestoneId?: string;
 }
+
+export type AIKeyProviderId = 'nvidia' | 'anthropic' | 'openai' | 'groq';
+
+export interface ProviderModelOption {
+  id: string;
+  name: string;
+  contextWindow: string;
+  speedTps: string;
+  recommendedFor: string;
+}
+
+export interface ProviderKeyItem {
+  id: AIKeyProviderId;
+  name: string;
+  displayName: string;
+  tagline: string;
+  keyPrefix: string;
+  keyPlaceholder: string;
+  docsUrl: string;
+  apiKey: string;
+  isConfigured: boolean;
+  selectedModel: string;
+  availableModels: ProviderModelOption[];
+  endpoint: string;
+  defaultEndpoint: string;
+  status: 'unconfigured' | 'valid' | 'testing' | 'error';
+  lastTestedAt?: string;
+  latencyMs?: number;
+  statusMessage?: string;
+}
+
+export interface ApplicationApiKeysState {
+  activeProviderId: AIKeyProviderId;
+  keys: Record<AIKeyProviderId, string>;
+  selectedModels: Record<AIKeyProviderId, string>;
+  customEndpoints?: Partial<Record<AIKeyProviderId, string>>;
+  autoFallbackToGemini: boolean;
+  lastUpdated?: string;
+}
+
+export interface ProviderUsageMetric {
+  providerId: AIKeyProviderId;
+  providerName: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  creditAllowance: number;
+  creditsUsed: number;
+  creditUnit: string;
+  averageLatencyMs: number;
+  lastUsedAt?: string;
+  rateLimitPercent: number;
+  tierName: string;
+}
+
+export interface ProviderCallLogItem {
+  id: string;
+  timestamp: string;
+  providerId: AIKeyProviderId;
+  model: string;
+  promptSnippet: string;
+  tokensPrompt: number;
+  tokensCompletion: number;
+  totalTokens: number;
+  latencyMs: number;
+  costUsd: number;
+  status: 'success' | 'error';
+}
+
+export interface GlobalUsageStatistics {
+  providers: Record<AIKeyProviderId, ProviderUsageMetric>;
+  totalTokensAllProviders: number;
+  totalRequestsAllProviders: number;
+  totalCostUsdAllProviders: number;
+  recentCalls: ProviderCallLogItem[];
+  lastResetAt: string;
+}
+
 
 

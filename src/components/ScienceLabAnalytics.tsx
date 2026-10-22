@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PublishingProject } from '../types/storyforge';
 import { 
   BarChart3, Award, AlertTriangle, CheckCircle2, Star, 
-  TrendingUp, BookOpen, ShieldCheck, Cpu 
+  TrendingUp, BookOpen, ShieldCheck, Cpu, Globe, Search, RefreshCw, ExternalLink
 } from 'lucide-react';
 
 interface ScienceLabAnalyticsProps {
@@ -12,6 +12,37 @@ interface ScienceLabAnalyticsProps {
 export const ScienceLabAnalytics: React.FC<ScienceLabAnalyticsProps> = ({ project }) => {
   const score = project.scorecard;
   const sim = project.analytics;
+
+  // Google Search Grounding Fact-Checking State (gemini-3.8-flash + googleSearch)
+  const [auditQuery, setAuditQuery] = useState<string>(
+    "Atmospheric physics of lightning discharge, thunder speed at 20C, and ball lightning phenomena"
+  );
+  const [isAuditing, setIsAuditing] = useState<boolean>(false);
+  const [auditReport, setAuditReport] = useState<any | null>(null);
+
+  const handleRunScienceAudit = async (queryText?: string) => {
+    const q = queryText || auditQuery;
+    if (!q.trim()) return;
+    setIsAuditing(true);
+    try {
+      const res = await fetch('/api/gemini/search-grounding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: q,
+          topic: 'science_meteorology',
+          bookTitle: project.name || 'Little Zeus Gets His Thunderbolt'
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAuditReport(data);
+    } catch (e) {
+      console.warn('Science grounding error:', e);
+    } finally {
+      setIsAuditing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,6 +145,137 @@ export const ScienceLabAnalytics: React.FC<ScienceLabAnalyticsProps> = ({ projec
         </div>
 
       </div>
+
+      {/* Google Search Grounding: Science & Lore Verification (gemini-3.8-flash + googleSearch) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-xl">
+              <Globe className="w-6 h-6" />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span>Google Search Science & Lore Audit</span>
+                <span className="text-[10px] font-mono bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-bold">
+                  gemini-3.8-flash + googleSearch
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Ground book physics, atmospheric phenomena, and classical mythological lore against verified scientific research and archeological records.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleRunScienceAudit()}
+            disabled={isAuditing || !auditQuery.trim()}
+            className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all active:scale-95 shrink-0"
+          >
+            {isAuditing ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Fact-Checking with Google...</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-3.5 h-3.5" />
+                <span>Run Fact-Check Audit</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Fact-Check Presets */}
+        <div className="space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            Science Fact-Check Queries:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Atmospheric lightning temperature vs sun surface comparison",
+              "Thunder speed in 20°C air and 5-second per mile distance rule",
+              "Ball lightning plasma duration and electrical spark physics",
+              "Ancient Delphi archaeological bronze metallurgy and Greek thunderbolts"
+            ].map((preset, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setAuditQuery(preset);
+                  handleRunScienceAudit(preset);
+                }}
+                className="bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-sky-500/50 text-xs px-3 py-1.5 rounded-lg transition-all text-left"
+              >
+                🔬 {preset}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Input */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={auditQuery}
+            onChange={(e) => setAuditQuery(e.target.value)}
+            placeholder="Enter custom scientific hypothesis to ground via Google Search..."
+            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+          />
+        </div>
+
+        {/* Audit Report View */}
+        {auditReport && (
+          <div className="space-y-4 pt-4 border-t border-slate-800">
+            {/* Search Queries Executed */}
+            {auditReport.searchQueries && auditReport.searchQueries.length > 0 && (
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Search className="w-3 h-3 text-sky-400" />
+                  <span>Google Search Queries Executed:</span>
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {auditReport.searchQueries.map((q: string, i: number) => (
+                    <span key={i} className="text-[11px] font-mono bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded text-sky-300">
+                      {q}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sources */}
+            {auditReport.sources && auditReport.sources.length > 0 && (
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <ExternalLink className="w-3 h-3 text-emerald-400" />
+                  <span>Verified Research Sources:</span>
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {auditReport.sources.map((s: any, i: number) => (
+                    <a
+                      key={i}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium bg-slate-900 hover:bg-slate-800 border border-sky-500/30 hover:border-sky-400 px-2.5 py-1 rounded-lg text-sky-300 flex items-center gap-1 transition-colors"
+                    >
+                      <Globe className="w-3 h-3 text-sky-400 shrink-0" />
+                      <span className="truncate max-w-xs">{s.title || s.url}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Text Report */}
+            <div className="p-5 bg-slate-950/90 border border-slate-800 rounded-xl">
+              <div className="prose prose-invert max-w-none text-xs leading-relaxed whitespace-pre-wrap font-sans text-slate-200">
+                {auditReport.text}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

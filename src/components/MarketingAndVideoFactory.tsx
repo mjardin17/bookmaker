@@ -9,12 +9,14 @@ interface MarketingAndVideoFactoryProps {
   project: PublishingProject;
   onGenerateCampaign: () => void;
   onNavigateToCartoons?: () => void;
+  onNavigateToBossLister?: () => void;
 }
 
 export const MarketingAndVideoFactory: React.FC<MarketingAndVideoFactoryProps> = ({
   project,
   onGenerateCampaign,
-  onNavigateToCartoons
+  onNavigateToCartoons,
+  onNavigateToBossLister
 }) => {
   const [subTab, setSubTab] = useState<'marketing' | 'video'>('video');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -66,6 +68,14 @@ export const MarketingAndVideoFactory: React.FC<MarketingAndVideoFactoryProps> =
             >
               Video Factory
             </button>
+            {onNavigateToBossLister && (
+              <button
+                onClick={onNavigateToBossLister}
+                className="bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/10"
+              >
+                <span>🛍️ BossLister Studio</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

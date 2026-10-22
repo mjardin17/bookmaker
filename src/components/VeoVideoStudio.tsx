@@ -124,12 +124,14 @@ interface VeoVideoStudioProps {
   project?: PublishingProject;
   onAttachVideoToChapter?: (chapterNumber: number, videoUrl: string) => void;
   onNavigateTo3D?: () => void;
+  onNavigateToMusic?: () => void;
 }
 
 export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
   project,
   onAttachVideoToChapter,
-  onNavigateTo3D
+  onNavigateTo3D,
+  onNavigateToMusic
 }) => {
   // Active Studio Mode Tab
   const [studioTab, setStudioTab] = useState<StudioTab>('video');
@@ -786,12 +788,24 @@ export const VeoVideoStudio: React.FC<VeoVideoStudioProps> = ({
                       </div>
                       <span className="text-[10px] text-slate-500">Olympian Orchestral AAC</span>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={includeAudio}
-                      onChange={(e) => setIncludeAudio(e.target.checked)}
-                      className="w-4 h-4 accent-amber-500 cursor-pointer"
-                    />
+                    <div className="flex items-center gap-2">
+                      {onNavigateToMusic && (
+                        <button
+                          type="button"
+                          onClick={onNavigateToMusic}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 underline font-medium"
+                          title="Open Lyria Music Studio to compose custom tracks"
+                        >
+                          Lyria Studio
+                        </button>
+                      )}
+                      <input
+                        type="checkbox"
+                        checked={includeAudio}
+                        onChange={(e) => setIncludeAudio(e.target.checked)}
+                        className="w-4 h-4 accent-amber-500 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
 

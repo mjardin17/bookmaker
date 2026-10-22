@@ -15,17 +15,22 @@ import { ScienceLabAnalytics } from './components/ScienceLabAnalytics';
 import { ExportPackageHub } from './components/ExportPackageHub';
 import { SophisticatedBookEngine } from './components/SophisticatedBookEngine';
 import { SubscriptionConnectorsHub } from './components/SubscriptionConnectorsHub';
+import { APIKeyConfiguration } from './components/APIKeyConfiguration';
+import { AppFileDropOverlay } from './components/AppFileDropOverlay';
 import { NewProjectModal } from './components/NewProjectModal';
 import { EmpireOSSystemStatusModal } from './components/EmpireOSSystemStatusModal';
 import { ThreeStudio } from './components/ThreeStudio';
 import { LyriaMusicStudio } from './components/LyriaMusicStudio';
 import { VeoVideoStudio } from './components/VeoVideoStudio';
 import { GeminiChatbotStudio } from './components/GeminiChatbotStudio';
-import { Plus, RefreshCw, BookOpen } from 'lucide-react';
+import { BossListerCommercialStudio } from './components/BossListerCommercialStudio';
+import { Plus, RefreshCw, BookOpen, CheckCircle2, AlertCircle, Sparkles, X, Info } from 'lucide-react';
+import { ProjectMilestone } from './types/storyforge';
 
 const STORAGE_KEY = 'EMPIRE_OS_PROJECTS_V1';
 
 export default function App() {
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [projects, setProjects] = useState<PublishingProject[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,6 +53,14 @@ export default function App() {
   const [modalInitialTab, setModalInitialTab] = useState<'scratch' | 'video'>('scratch');
   const [isSystemStatusOpen, setIsSystemStatusOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [toastNotice, setToastNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastNotice({ message, type });
+    setTimeout(() => {
+      setToastNotice(prev => prev?.message === message ? null : prev);
+    }, 5500);
+  };
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -66,6 +79,129 @@ export default function App() {
     setProjects((prev) =>
       prev.map((p) => (p.id === activeProject.id ? { ...p, ...updatedFields } : p))
     );
+  };
+
+  // Drag and drop right to app handlers
+  const handleFileDropImportProject = (projectData: any) => {
+    try {
+      const newId = projectData.id || `proj_${Date.now()}`;
+      const imported: PublishingProject = {
+        ...INITIAL_PROJECTS[0],
+        ...projectData,
+        id: newId,
+        updatedAt: new Date().toISOString()
+      };
+      setProjects(prev => [imported, ...prev.filter(p => p.id !== newId)]);
+      setActiveProjectId(newId);
+      showToast(`Successfully imported book project "${imported.name}" into workspace!`, 'success');
+    } catch (err: any) {
+      showToast(`Error importing project: ${err.message}`, 'error');
+    }
+  };
+
+  const handleFileDropImportManuscript = (title: string, content: string) => {
+    if (!activeProject) {
+      showToast('Please select or create a book project first.', 'error');
+      return;
+    }
+    const words = content.split(/\s+/).filter(Boolean).length;
+    const nextNum = (activeProject.manuscript?.chapters?.length || 0) + 1;
+    const newChapter: Chapter = {
+      id: `ch-dropped-${Date.now()}`,
+      chapterNumber: nextNum,
+      title: title || `Chapter ${nextNum}: Ingested Manuscript`,
+      synopsis: `Ingested chapter draft (${words} words)`,
+      content: content,
+      wordCount: words,
+      readabilityScore: 88,
+      status: 'Council Review',
+      illustrationBrief: {
+        sceneDescription: `Key dramatic scene from ${title}`,
+        visualFocus: 'Protagonist confrontation scene',
+        midjourneyPrompt: `Cinematic book illustration for ${title}, detailed lighting, 8k --ar 16:9`,
+        dallePrompt: `Detailed book illustration for ${title}`
+      }
+    };
+
+    updateActiveProject({
+      manuscript: {
+        ...activeProject.manuscript,
+        chapters: [...(activeProject.manuscript?.chapters || []), newChapter],
+        wordCountTotal: (activeProject.manuscript?.wordCountTotal || 0) + words
+      }
+    });
+    setActiveTab('manuscript');
+    showToast(`Ingested chapter "${newChapter.title}" (${words} words)! Switched to Manuscript Editor.`, 'success');
+  };
+
+  const handleFileDropImportSchedule = (scheduleData: any) => {
+    if (!activeProject) {
+      showToast('Select a book project first to update its milestone schedule.', 'error');
+      return;
+    }
+    let milestonesToApply: ProjectMilestone[] = [];
+    if (Array.isArray(scheduleData)) {
+      milestonesToApply = scheduleData;
+    } else if (scheduleData?.milestones && Array.isArray(scheduleData.milestones)) {
+      milestonesToApply = scheduleData.milestones;
+    } else if (scheduleData?.csvText) {
+      const lines = (scheduleData.csvText as string).split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length > 1) {
+        milestonesToApply = lines.slice(1).map((row, idx) => {
+          const cols = row.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+          const title = cols[0] || `Phase ${idx + 1}`;
+          const duration = parseFloat(cols[1]) || 4;
+          const startDay = parseFloat(cols[2]) || idx * 4;
+          return {
+            id: `m_drop_${idx + 1}`,
+            phaseNumber: idx + 1,
+            title,
+            subtitle: `Imported via schedule file`,
+            category: 'Foundation',
+            stages: [idx + 1],
+            sf2Stages: ['BRIEF_INGEST'],
+            targetDaysFromStart: Math.round(startDay + duration),
+            startDate: new Date(Date.now() + startDay * 86400000).toISOString().slice(0, 10),
+            targetDeadline: new Date(Date.now() + (startDay + duration) * 86400000).toISOString().slice(0, 10),
+            startDay,
+            durationDays: duration,
+            owner: cols[3] || 'Publishing AI',
+            status: 'UPCOMING',
+            progressPercent: 0,
+            criticalPath: idx % 2 === 0,
+            deliverables: [
+              { id: `d_drop_${idx}_1`, label: `Execute ${title}`, completed: false, requiredForNext: true }
+            ]
+          };
+        });
+      }
+    }
+
+    if (milestonesToApply.length > 0) {
+      updateActiveProject({ milestones: milestonesToApply });
+      setActiveTab('pipeline');
+      showToast(`Imported ${milestonesToApply.length} milestones! Switched to Pipeline Timeline Tracker.`, 'success');
+    } else {
+      setActiveTab('pipeline');
+      showToast('Schedule file received and routed to Pipeline Tracker.', 'info');
+    }
+  };
+
+  const handleFileDropImportImage = (dataUrl: string, fileName: string) => {
+    if (!activeProject) {
+      showToast('Select a book project first to assign artwork.', 'error');
+      return;
+    }
+    updateActiveProject({
+      illustrationGuide: {
+        ...activeProject.illustrationGuide,
+        coverBrief: {
+          ...activeProject.illustrationGuide?.coverBrief,
+          coverImageUrl: dataUrl
+        }
+      }
+    });
+    showToast(`Assigned "${fileName}" as the active book cover artwork!`, 'success');
   };
 
   // Seed / Clear Handlers
@@ -356,6 +492,7 @@ export default function App() {
         }}
         onExportPackage={() => setActiveTab('export')}
         onOpenSystemStatus={() => setIsSystemStatusOpen(true)}
+        onOpenApiKeyConfig={() => setIsApiKeyModalOpen(true)}
         mode={mode}
         onToggleMode={setMode}
         activeTab={activeTab}
@@ -430,6 +567,7 @@ export default function App() {
           {activeTab === 'veo-studio' && (
             <VeoVideoStudio
               project={activeProject}
+              onNavigateToMusic={() => setActiveTab('music-studio')}
               onAttachVideoToChapter={(chNum, videoUrl) => {
                 const target = activeProject.manuscript?.chapters?.find(c => c.chapterNumber === chNum) || activeProject.manuscript?.chapters?.[0];
                 if (target) {
@@ -460,6 +598,9 @@ export default function App() {
               project={activeProject}
               onAdvanceStep={handleAdvanceStep}
               onRunStageAudit={(stageName) => handleRunDebate(`Stage Audit: ${stageName}`)}
+              onUpdateMilestones={(updatedMilestones) => {
+                updateActiveProject({ milestones: updatedMilestones });
+              }}
             />
           )}
 
@@ -474,6 +615,10 @@ export default function App() {
                 }
               }}
             />
+          )}
+
+          {activeTab === 'apikeys' && (
+            <APIKeyConfiguration />
           )}
 
           {activeTab === 'council' && (
@@ -524,6 +669,14 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'bosslister' && (
+            <BossListerCommercialStudio
+              project={activeProject}
+              onNavigateToCartoons={() => setActiveTab('cartoons')}
+              onNavigateToVeo={() => setActiveTab('veo-studio')}
+            />
+          )}
+
           {activeTab === 'characters' && (
             <CharacterAndWorldLab
               project={activeProject}
@@ -554,11 +707,15 @@ export default function App() {
               project={activeProject}
               onGenerateCampaign={() => handleRunDebate('Generate Omni-Channel Marketing Campaign')}
               onNavigateToCartoons={() => setActiveTab('cartoons')}
+              onNavigateToBossLister={() => setActiveTab('bosslister')}
             />
           )}
 
           {activeTab === 'merch' && (
-            <MerchStudio project={activeProject} />
+            <MerchStudio 
+              project={activeProject} 
+              onNavigateToBossLister={() => setActiveTab('bosslister')}
+            />
           )}
 
           {activeTab === 'analytics' && (
@@ -587,6 +744,54 @@ export default function App() {
         onLoadSeedData={handleLoadSeedData}
         onClearData={handleClearData}
         totalProjectsCount={projects.length}
+      />
+
+      {/* Multi-Provider API Key Configuration Modal (NVIDIA, Anthropic, OpenAI, Groq) */}
+      <APIKeyConfiguration
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        isModal={true}
+      />
+
+      {/* Floating System Notification Toast */}
+      {toastNotice && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md w-full shadow-2xl animate-fadeIn">
+          <div className={`p-4 rounded-2xl border backdrop-blur-md flex items-start gap-3 shadow-xl ${
+            toastNotice.type === 'error'
+              ? 'bg-rose-950/90 border-rose-500/50 text-rose-200'
+              : toastNotice.type === 'info'
+              ? 'bg-sky-950/90 border-sky-500/50 text-sky-200'
+              : 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'
+          }`}>
+            <div className="shrink-0 mt-0.5">
+              {toastNotice.type === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-rose-400" />
+              ) : toastNotice.type === 'info' ? (
+                <Info className="w-5 h-5 text-sky-400" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              )}
+            </div>
+            <div className="flex-1 text-xs leading-relaxed font-medium">
+              {toastNotice.message}
+            </div>
+            <button
+              onClick={() => setToastNotice(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global Drag-and-Drop Ingest Overlay (Drop files right to app) */}
+      <AppFileDropOverlay
+        onImportProject={handleFileDropImportProject}
+        onImportManuscriptText={handleFileDropImportManuscript}
+        onImportSchedule={handleFileDropImportSchedule}
+        onImportImage={handleFileDropImportImage}
+        onNotification={(msg, type) => showToast(msg, type)}
       />
     </div>
   );
